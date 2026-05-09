@@ -1,0 +1,27 @@
+
+# Node
+node_modules/
+.next/
+out/
+build/
+.env*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+env/
+venv/
+.pytest_cache/
+
+# Databases
+*.sqlite3
+postgres_data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project Specific
+backend/app/static/uploads/*
+!backend/app/static/uploads/.gitkeep

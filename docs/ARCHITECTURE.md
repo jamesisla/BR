@@ -1,0 +1,3 @@
+# Architecture
+
+Headless, modular, scalable.
