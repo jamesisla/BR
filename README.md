@@ -1,33 +1,24 @@
-# Tienda Artisan 🕊️
+# 🕊️ Tienda Artisan - E-commerce de Próxima Generación
 
-Plataforma e-commerce minimalista y funcional diseñada para marcas que valoran la estética y la simplicidad.
+Tienda Artisan es una plataforma e-commerce de diseño premium, minimalista y totalmente dinámica. Este proyecto ha sido transformado de una tienda de café a un **Motor Genérico de Tiendas** que permite lanzar cualquier tipo de negocio en minutos.
 
-## 🚀 Despliegue con Docker
+## ✨ Características Principales
+- 🎨 **Setup Wizard:** Configuración total de marca (logo, colores, textos, hero) desde el panel admin.
+- 📦 **Gestión de Stock:** Descuento automático de inventario tras cada compra.
+- 💳 **Pagos Reales:** Integración completa con Mercado Pago (Preference + Webhooks).
+- 🐳 **Docker Ready:** Despliegue con un solo comando preparado para la nube.
+- 🔍 **Buscador Inteligente:** Filtros por categoría y sugerencias.
 
-Este proyecto está preparado para correr en cualquier entorno (Local, VPS, Nube) mediante contenedores.
+## 🚀 Inicio Rápido
+```bash
+docker-compose up -d --build
+```
+La tienda estará disponible en `http://localhost:3000`.
 
-### Requisitos
-- Docker y Docker Compose
+## 📚 Documentación
+Para ver todos los detalles técnicos, guías de configuración y manuales de operación, consulta:
+- [Página de Documentación Completa](./DOCUMENTACION.md)
+- [Guía de Configuración de Mercado Pago](./MERCADO_PAGO.md)
 
-### Pasos para iniciar
-1. Clona el repositorio.
-2. En la raíz del proyecto, ejecuta:
-   ```bash
-   docker-compose up -d --build
-   ```
-3. La tienda estará disponible en `http://localhost:3000` y el backend en `http://localhost:8000`.
-
-### Variables de Entorno (Opcional para Nube)
-Si despliegas en un servidor remoto, puedes configurar:
-- `NEXT_PUBLIC_API_URL`: URL pública de la API (ej: `https://api.tutienda.com/api`)
-- `BACKEND_URL`: URL pública del backend para las imágenes (ej: `https://api.tutienda.com`)
-- `DB_PASSWORD`: Contraseña para la base de datos PostgreSQL.
-
-## 🛠️ Estructura del Proyecto
-- **/frontend**: Next.js 14 + TailwindCSS + Framer Motion.
-- **/backend**: FastAPI + SQLAlchemy + PostgreSQL.
-- **/backend/app/static/uploads**: Directorio persistente para imágenes de productos y logos.
-
-## 🔑 Acceso Administrativo
-El panel de control está en `/admin`. 
-*Nota: La contraseña maestra se configura en el backend.*
+---
+*Desarrollado con FastAPI, Next.js y un diseño artesanal de alto impacto.*

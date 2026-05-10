@@ -15,12 +15,26 @@ interface Product {
   image_url?: string
 }
 
+interface StoreConfig {
+  name: string
+  primary_color: string
+  secondary_color: string
+  footer_text: string
+  logo_url?: string
+  hero_title: string
+  hero_subtitle: string
+  hero_image_url?: string
+}
+
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([])
+  const [config, setConfig] = useState<StoreConfig | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
+    
+    // Fetch Products
     fetch(`${apiUrl}/products/`)
       .then(res => res.json())
       .then(data => {
@@ -31,7 +45,15 @@ export default function Home() {
         console.error(err)
         setLoading(false)
       })
+
+    // Fetch Config
+    fetch(`${apiUrl}/settings/`)
+      .then(res => res.json())
+      .then(data => setConfig(data))
+      .catch(err => console.error(err))
   }, [])
+
+  const heroImage = config?.hero_image_url || "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=2000&auto=format&fit=crop"
 
   return (
     <div>
@@ -39,8 +61,8 @@ export default function Home() {
       <section className="hero-section">
         <div style={{ position: 'absolute', inset: 0 }}>
           <img 
-            src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=2000&auto=format&fit=crop" 
-            alt="Artisan Coffee"
+            src={heroImage} 
+            alt={config?.name || "Store Hero"}
             style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6 }}
           />
         </div>
@@ -50,10 +72,10 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           className="hero-content"
         >
-          <span className="hero-subtitle">Curado para el alma • Roast #084</span>
-          <h2 className="font-serif hero-title">El Arte del <span style={{ fontWeight: 400, fontStyle: 'italic', color: 'var(--secondary)' }}>Tostado</span></h2>
+          <span className="hero-subtitle">{config?.name || 'TIENDA'} • Especialistas</span>
+          <h2 className="font-serif hero-title">{config?.hero_title || 'El Arte de la Pureza'}</h2>
           <p style={{ opacity: 0.8, fontSize: '1.2rem', marginBottom: '3rem', maxWidth: '600px', margin: '0 auto 3rem' }}>
-            Descubre nuestra selección artesanal de granos de origen único, tostados minuciosamente cada mañana.
+            {config?.hero_subtitle || 'Descubre nuestra selección artesanal única.'}
           </p>
           <div style={{ display: 'flex', gap: '20px', justifyContent: 'center' }}>
             <Link href="#productos">
@@ -66,10 +88,10 @@ export default function Home() {
       {/* Featured Grid Section */}
       <section className="container" id="productos" style={{ padding: '120px 0' }}>
         <div style={{ textAlign: 'center', marginBottom: '80px' }}>
-          <h3 className="font-serif" style={{ fontSize: '3.5rem', marginBottom: '15px' }}>Nuestros Orígenes</h3>
+          <h3 className="font-serif" style={{ fontSize: '3.5rem', marginBottom: '15px' }}>Nuestra Colección</h3>
           <div style={{ width: '40px', height: '2px', background: 'var(--secondary)', margin: '0 auto 20px' }}></div>
           <p style={{ opacity: 0.4, maxWidth: '500px', margin: '0 auto', fontSize: '13px' }}>
-            Trabajamos directamente con fincas seleccionadas para asegurar la mejor calidad y sostenibilidad.
+            Seleccionamos cada producto con un estándar de calidad inigualable.
           </p>
         </div>
 

@@ -30,6 +30,9 @@ def update_settings(config: StoreConfig, db: Session = Depends(get_db)):
     settings.secondary_color = config.secondary_color
     settings.logo_url = config.logo_url
     settings.footer_text = config.footer_text
+    settings.hero_title = config.hero_title
+    settings.hero_subtitle = config.hero_subtitle
+    settings.hero_image_url = config.hero_image_url
     
     db.commit()
     db.refresh(settings)

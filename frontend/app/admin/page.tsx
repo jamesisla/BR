@@ -57,9 +57,11 @@ export default function AdminDashboard() {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const logoInputRef = useRef<HTMLInputElement>(null)
+  const heroInputRef = useRef<HTMLInputElement>(null)
   const [activeTab, setActiveTab] = useState('orders') 
   const [uploading, setUploading] = useState(false)
   const [logoUploading, setLogoUploading] = useState(false)
+  const [heroUploading, setHeroUploading] = useState(false)
   const [orders, setOrders] = useState([])
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -72,7 +74,10 @@ export default function AdminDashboard() {
     logo_url: '',
     primary_color: '#3d2b1f',
     secondary_color: '#a67c52',
-    footer_text: '© 2026 Tienda Artisan. Crafted for purity.'
+    footer_text: '© 2026 Tienda Artisan. Crafted for purity.',
+    hero_title: 'El Arte de la Pureza',
+    hero_subtitle: 'Descubre nuestra selección artesanal única.',
+    hero_image_url: ''
   })
 
   const [productForm, setProductForm] = useState({
@@ -291,6 +296,34 @@ export default function AdminDashboard() {
     }
   }
 
+  const handleHeroUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setHeroUploading(true)
+    const formData = new FormData()
+    formData.append('file', file)
+
+    try {
+      const response = await fetch(`${API_URL}/products/upload`, {
+        method: 'POST',
+        body: formData
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setStoreSettings({ ...storeSettings, hero_image_url: data.url })
+      } else {
+        alert('Error al subir la imagen del hero')
+      }
+    } catch (error) {
+      console.error(error)
+      alert('Error de conexión al subir la imagen')
+    } finally {
+      setHeroUploading(false)
+    }
+  }
+
   const handleSettingsSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
@@ -506,6 +539,55 @@ export default function AdminDashboard() {
                                 <p className="text-[10px] text-slate-400 mt-2 italic">
                                    Recomendado: 400x100px (Horizontal) o 200x200px (Cuadrado). Fondos transparentes (PNG) sugeridos.
                                 </p>
+                             </div>
+                          </div>
+                       </div>
+
+                       <div className="col-span-2 mt-4 pt-4 border-t border-slate-100">
+                          <h4 className="text-[11px] font-bold text-slate-900 mb-6 flex items-center gap-2">
+                             <Palette size={14} className="text-slate-400" />
+                             CONFIGURACIÓN PÁGINA DE INICIO (HERO)
+                          </h4>
+                          <div className="grid grid-cols-2 gap-6">
+                             <div className="col-span-2">
+                                <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-2">Imagen de Portada (Hero)</label>
+                                <div 
+                                  className="w-full h-48 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl overflow-hidden cursor-pointer hover:border-slate-400 transition-all group relative"
+                                  onClick={() => heroInputRef.current?.click()}
+                                >
+                                   {storeSettings.hero_image_url ? (
+                                     <img src={storeSettings.hero_image_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                   ) : (
+                                     <div className="w-full h-full flex flex-col items-center justify-center gap-2 opacity-30">
+                                        <Image size={40} />
+                                        <span className="text-xs font-bold uppercase tracking-widest">Subir Imagen Gran Formato</span>
+                                     </div>
+                                   )}
+                                   <input type="file" ref={heroInputRef} className="hidden" onChange={handleHeroUpload} accept="image/*" />
+                                   {heroUploading && (
+                                     <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                                        <Loader2 className="animate-spin text-slate-900" />
+                                     </div>
+                                   )}
+                                </div>
+                             </div>
+                             <div>
+                                <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-2">Título Hero</label>
+                                <input 
+                                  type="text" 
+                                  value={storeSettings.hero_title}
+                                  onChange={(e) => setStoreSettings({...storeSettings, hero_title: e.target.value})}
+                                  className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/5 transition-all font-serif italic text-lg"
+                                />
+                             </div>
+                             <div>
+                                <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-2">Subtítulo Hero</label>
+                                <input 
+                                  type="text" 
+                                  value={storeSettings.hero_subtitle}
+                                  onChange={(e) => setStoreSettings({...storeSettings, hero_subtitle: e.target.value})}
+                                  className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/5 transition-all"
+                                />
                              </div>
                           </div>
                        </div>

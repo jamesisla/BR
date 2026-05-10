@@ -61,9 +61,24 @@ export default function CheckoutPage() {
       })
 
       if (response.ok) {
-        const result = await response.json()
-        clearCart()
-        router.push(`/checkout/success?orderId=${result.id}`)
+        const orderResult = await response.json()
+        
+        // 2. Crear Preferencia de Mercado Pago
+        const prefResponse = await fetch(`${apiUrl}/payments/create-preference`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order_id: orderResult.id })
+        })
+
+        if (prefResponse.ok) {
+          const prefData = await prefResponse.json()
+          // Redirigir al usuario a Mercado Pago
+          window.location.href = prefData.init_point
+        } else {
+          // Si falla Mercado Pago, igual mostramos éxito de pedido como "pago pendiente/transferencia"
+          clearCart()
+          router.push(`/checkout/success?orderId=${orderResult.id}`)
+        }
       } else {
         alert('Error al procesar el pedido. Por favor intente de nuevo.')
       }

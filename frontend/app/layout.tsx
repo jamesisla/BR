@@ -15,6 +15,9 @@ interface StoreConfig {
   secondary_color: string
   footer_text: string
   logo_url?: string
+  hero_title: string
+  hero_subtitle: string
+  hero_image_url?: string
 }
 
 function Header({ config }: { config: StoreConfig | null }) {

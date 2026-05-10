@@ -4,5 +4,6 @@ sqlalchemy==2.0.31
 pydantic==2.7.4
 pydantic-settings==2.3.4
 python-multipart==0.0.9
+mercadopago==2.2.0
 alembic==1.13.1
 python-dotenv==1.0.1

@@ -11,3 +11,8 @@ class StoreSettings(Base):
     secondary_color = Column(String, default="#a67c52")
     logo_url = Column(String, nullable=True)
     footer_text = Column(String, default="© 2026 Tienda Artisan. Crafted for purity.")
+    
+    # Generic Store Fields
+    hero_title = Column(String, default="El Arte de la Pureza")
+    hero_subtitle = Column(String, default="Descubre nuestra selección artesanal única.")
+    hero_image_url = Column(String, nullable=True)
