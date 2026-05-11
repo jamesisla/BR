@@ -49,7 +49,13 @@ export default function Home() {
     // Fetch Config
     fetch(`${apiUrl}/settings/`)
       .then(res => res.json())
-      .then(data => setConfig(data))
+      .then(data => setConfig({
+        ...data,
+        name: data.name || 'TIENDA',
+        hero_title: data.hero_title || 'El Arte de la Pureza',
+        hero_subtitle: data.hero_subtitle || 'Descubre nuestra selección artesanal única.',
+        hero_image_url: data.hero_image_url || ''
+      }))
       .catch(err => console.error(err))
   }, [])
 

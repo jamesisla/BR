@@ -23,7 +23,8 @@ import {
   Upload,
   Loader2,
   Settings as SettingsIcon,
-  Palette
+  Palette,
+  Image
 } from 'lucide-react'
 import { useRef } from 'react'
 import Link from 'next/link'
@@ -111,7 +112,16 @@ export default function AdminDashboard() {
     try {
       const res = await fetch(`${API_URL}/settings/`)
       const data = await res.json()
-      setStoreSettings(data)
+      setStoreSettings({
+        name: data.name || 'TIENDA ARTISAN',
+        logo_url: data.logo_url || '',
+        primary_color: data.primary_color || '#3d2b1f',
+        secondary_color: data.secondary_color || '#a67c52',
+        footer_text: data.footer_text || '© 2026 Tienda Artisan. Crafted for purity.',
+        hero_title: data.hero_title || 'El Arte de la Pureza',
+        hero_subtitle: data.hero_subtitle || 'Descubre nuestra selección artesanal única.',
+        hero_image_url: data.hero_image_url || ''
+      })
     } catch (e) {
       console.error(e)
     }
@@ -550,7 +560,16 @@ export default function AdminDashboard() {
                           </h4>
                           <div className="grid grid-cols-2 gap-6">
                              <div className="col-span-2">
-                                <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-2">Imagen de Portada (Hero)</label>
+                                <div className="flex justify-between items-center mb-2">
+                                   <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block">Imagen de Portada (Hero)</label>
+                                   <div className="group relative">
+                                      <AlertCircle size={14} className="text-slate-300 cursor-help" />
+                                      <div className="absolute bottom-full right-0 mb-2 w-64 bg-slate-800 text-white text-[10px] p-3 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-xl">
+                                         <strong>Tip:</strong> Usa imágenes panorámicas de alta calidad.<br/>
+                                         <strong>Recomendado:</strong> 1920x1080px o superior. Formato JPG o WebP.
+                                      </div>
+                                   </div>
+                                </div>
                                 <div 
                                   className="w-full h-48 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl overflow-hidden cursor-pointer hover:border-slate-400 transition-all group relative"
                                   onClick={() => heroInputRef.current?.click()}
@@ -570,6 +589,9 @@ export default function AdminDashboard() {
                                      </div>
                                    )}
                                 </div>
+                                <p className="text-[10px] text-slate-400 mt-2 italic text-center">
+                                   Imagen sugerida: Panorámica (16:9). Se aplicará un filtro de oscuridad para mejorar la lectura del texto.
+                                </p>
                              </div>
                              <div>
                                 <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-2">Título Hero</label>
