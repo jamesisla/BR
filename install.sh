@@ -55,8 +55,17 @@ fi
 # 3. Actualizar sistema e instalar paquetes esenciales
 echo -e "\n${YELLOW}📦 [2/7] Instalando paquetes base y dependencias del sistema...${NC}"
 export DEBIAN_FRONTEND=noninteractive
-apt-get update -qq
-apt-get install -y -qq curl wget git build-essential ufw iptables-persistent netfilter-persistent ca-certificates gnupg debian-keyring debian-archive-keyring apt-transport-https
+
+# Corregir posibles llaves PPA rotas de terceros (ej: Microsoft VS Code)
+if grep -rq "packages.microsoft.com" /etc/apt/sources.list.d/ 2>/dev/null; then
+    echo "Corrigiendo llaves GPG de repositorios externos..."
+    mkdir -p /etc/apt/trusted.gpg.d /usr/share/keyrings
+    curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /etc/apt/trusted.gpg.d/microsoft.gpg 2>/dev/null || true
+    curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/packages.microsoft.gpg 2>/dev/null || true
+fi
+
+apt-get update -qq || true
+apt-get install -y --fix-missing curl wget git build-essential ufw iptables-persistent netfilter-persistent ca-certificates gnupg debian-keyring debian-archive-keyring apt-transport-https
 
 # 4. Instalar Go 1.22+ (Si no está instalado o es versión antigua)
 echo -e "\n${YELLOW}🐹 [3/7] Verificando / Instalando Go (Golang)...${NC}"
@@ -89,10 +98,10 @@ fi
 echo -e "\n${YELLOW}🌐 [5/7] Verificando / Instalando Caddy Web Server nativo...${NC}"
 if ! command -v caddy &> /dev/null; then
     echo "Instalando Caddy desde repositorio oficial..."
-    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg --yes
+    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg --yes 2>/dev/null || true
     curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list
-    apt-get update -qq
-    apt-get install -y -qq caddy
+    apt-get update -qq || true
+    apt-get install -y --fix-missing caddy
     echo -e "${GREEN}✅ Caddy instalado con éxito.${NC}"
 else
     echo -e "${GREEN}✅ Caddy ya está instalado.${NC}"
