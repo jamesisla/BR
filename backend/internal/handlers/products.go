@@ -236,6 +236,9 @@ func (h *ProductHandler) UploadImage(c *gin.Context) {
 
 	backendURL := strings.TrimRight(h.cfg.BackendURL, "/")
 	fileURL := fmt.Sprintf("%s/static/uploads/%s", backendURL, filename)
+	if backendURL == "" {
+		fileURL = fmt.Sprintf("/static/uploads/%s", filename)
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"url": fileURL,

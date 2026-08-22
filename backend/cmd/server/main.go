@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"embed"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -18,6 +21,9 @@ import (
 	"tienda-backend/internal/services"
 )
 
+//go:embed all:dist
+var embeddedDist embed.FS
+
 func main() {
 	cfg := config.Load()
 
@@ -25,7 +31,7 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	// 1. Initialize Database
+	// 1. Initialize Database (SQLite with WAL or Postgres)
 	db, err := database.InitDB(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("Error crítico al inicializar la base de datos: %v", err)
@@ -56,14 +62,13 @@ func main() {
 	}
 	r.Use(cors.New(corsConfig))
 
-	// 6. Ensure Upload Directory exists and serve static uploads
+	// 6. Ensure Upload Directory exists and serve static uploads from disk
 	uploadDir := cfg.UploadDir
 	if uploadDir == "" {
 		uploadDir = "./uploads"
 	}
 	_ = os.MkdirAll(uploadDir, 0755)
 
-	// Serve uploads at both /static/uploads and /uploads for total compatibility
 	r.Static("/static/uploads", uploadDir)
 	r.Static("/uploads", uploadDir)
 
@@ -74,7 +79,7 @@ func main() {
 		api.GET("/health", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{
 				"status":  "ok",
-				"service": "tienda-backend-go",
+				"service": "tienda-single-binary",
 				"time":    time.Now().Format(time.RFC3339),
 			})
 		})
@@ -85,7 +90,7 @@ func main() {
 			authGroup.POST("/login", authHandler.Login)
 		}
 
-		// Store Settings & Branding
+		// Store Settings & Branding Wizard
 		settingsGroup := api.Group("/settings")
 		{
 			settingsGroup.GET("/", settingsHandler.GetSettings)
@@ -128,8 +133,16 @@ func main() {
 		}
 	}
 
-	// 8. Start HTTP Server with Graceful Shutdown
-	addr := ":" + cfg.Port
+	// 8. Setup Embedded Frontend SPA
+	setupEmbeddedSPA(r)
+
+	// 9. Start HTTP Server with Graceful Shutdown
+	port := cfg.Port
+	if port == "" {
+		port = "80"
+	}
+	addr := ":" + port
+
 	srv := &http.Server{
 		Addr:         addr,
 		Handler:      r,
@@ -139,13 +152,13 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("🚀 Tienda Backend (Go High Performance) iniciado en http://0.0.0.0%s", addr)
+		log.Printf("🚀 Tienda Artisan (Single Binary) iniciada en http://0.0.0.0%s", addr)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Error al iniciar el servidor: %v", err)
+			log.Fatalf("Error al iniciar el servidor en el puerto %s: %v", port, err)
 		}
 	}()
 
-	// Graceful shutdown on SIGINT / SIGTERM
+	// Graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
@@ -159,4 +172,40 @@ func main() {
 	}
 
 	log.Println("Servidor detenido correctamente.")
+}
+
+func setupEmbeddedSPA(r *gin.Engine) {
+	distFS, err := fs.Sub(embeddedDist, "dist")
+	if err != nil {
+		log.Printf("Aviso: No se pudo extraer sub-sistema dist: %v", err)
+		return
+	}
+
+	httpFS := http.FS(distFS)
+
+	r.NoRoute(func(c *gin.Context) {
+		reqPath := strings.TrimPrefix(c.Request.URL.Path, "/")
+
+		// Si es una ruta de API inexistente, responder 404 JSON
+		if strings.HasPrefix(c.Request.URL.Path, "/api/") || c.Request.URL.Path == "/api" {
+			c.JSON(http.StatusNotFound, gin.H{"detail": "Endpoint de API no encontrado"})
+			return
+		}
+
+		// Si es un archivo estático existente (JS, CSS, imágenes, etc.)
+		if reqPath != "" {
+			file, err := distFS.Open(reqPath)
+			if err == nil {
+				stat, statErr := file.Stat()
+				file.Close()
+				if statErr == nil && !stat.IsDir() {
+					c.FileFromFS(reqPath, httpFS)
+					return
+				}
+			}
+		}
+
+		// Fallback para SPA (Single Page Application) -> index.html
+		c.FileFromFS("index.html", httpFS)
+	})
 }

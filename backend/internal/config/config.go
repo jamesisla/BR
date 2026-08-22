@@ -20,10 +20,10 @@ type Config struct {
 func Load() *Config {
 	_ = godotenv.Load()
 
-	port := getEnv("PORT", "8000")
+	port := getEnv("PORT", "80")
 	dbURL := getEnv("DATABASE_URL", "ecommerce.db")
-	backendURL := getEnv("BACKEND_URL", "http://localhost:8000")
-	frontendURL := getEnv("FRONTEND_URL", "http://localhost:3000")
+	backendURL := getEnv("BACKEND_URL", "")
+	frontendURL := getEnv("FRONTEND_URL", "")
 	adminPass := getEnv("ADMIN_PASSWORD", "admin123")
 	mpToken := getEnv("MP_ACCESS_TOKEN", "TEST-6447849483321584-051015-8d598585474747474747474747474747-000000000")
 	uploadDir := getEnv("UPLOAD_DIR", "./uploads")
