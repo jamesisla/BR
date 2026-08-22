@@ -75,7 +75,16 @@ func InitDB(databaseURL string) (*gorm.DB, error) {
 		&models.OrderItem{},
 		&models.StoreSettings{},
 	); err != nil {
-		return nil, fmt.Errorf("error en AutoMigrate: %w", err)
+		log.Printf("Aviso: Esquema anterior incompatible detectado (%v). Reconstruyendo tablas limpiamente...", err)
+		_ = db.Migrator().DropTable(&models.OrderItem{}, &models.Order{}, &models.Product{}, &models.StoreSettings{})
+		if err2 := db.AutoMigrate(
+			&models.Product{},
+			&models.Order{},
+			&models.OrderItem{},
+			&models.StoreSettings{},
+		); err2 != nil {
+			return nil, fmt.Errorf("error en AutoMigrate: %w", err2)
+		}
 	}
 
 	// Seed initial data if tables are empty
