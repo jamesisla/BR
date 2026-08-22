@@ -56,16 +56,20 @@ fi
 echo -e "\n${YELLOW}📦 [2/7] Instalando paquetes base y dependencias del sistema...${NC}"
 export DEBIAN_FRONTEND=noninteractive
 
-# Corregir posibles llaves PPA rotas de terceros (ej: Microsoft VS Code)
-if grep -rq "packages.microsoft.com" /etc/apt/sources.list.d/ 2>/dev/null; then
+# Corregir / desactivar posibles llaves PPA rotas de terceros (ej: Microsoft VS Code)
+if [ -f /etc/apt/sources.list.d/vscode.list ] || grep -rq "packages.microsoft.com" /etc/apt/sources.list.d/ 2>/dev/null; then
     echo "Corrigiendo llaves GPG de repositorios externos..."
-    mkdir -p /etc/apt/trusted.gpg.d /usr/share/keyrings
+    mkdir -p /etc/apt/trusted.gpg.d /usr/share/keyrings /etc/apt/keyrings
     curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /etc/apt/trusted.gpg.d/microsoft.gpg 2>/dev/null || true
     curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/packages.microsoft.gpg 2>/dev/null || true
+    curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /etc/apt/keyrings/packages.microsoft.gpg 2>/dev/null || true
+    # Obtener llave específica EB3E94ADBE1229CF si sqv la solicita
+    gpg --keyserver hkps://keyserver.ubuntu.com --recv-keys EB3E94ADBE1229CF 2>/dev/null && gpg --export EB3E94ADBE1229CF > /etc/apt/trusted.gpg.d/vscode-eb3.gpg 2>/dev/null || true
 fi
 
 apt-get update -qq || true
-apt-get install -y --fix-missing curl wget git build-essential ufw iptables-persistent netfilter-persistent ca-certificates gnupg debian-keyring debian-archive-keyring apt-transport-https
+# Nota: NO instalar iptables-persistent junto a ufw porque entran en conflicto de dependencias
+apt-get install -y --fix-missing curl wget git build-essential ufw ca-certificates gnupg debian-keyring debian-archive-keyring apt-transport-https
 
 # 4. Instalar Go 1.22+ (Si no está instalado o es versión antigua)
 echo -e "\n${YELLOW}🐹 [3/7] Verificando / Instalando Go (Golang)...${NC}"
@@ -108,21 +112,21 @@ else
 fi
 
 # 7. Configurar Firewall OCI (iptables y ufw)
-echo -e "\n${YELLOW}🛡️  [6/7] Abriendo puertos en Firewall OCI (80, 443, 3000, 8000)...${NC}"
+echo -e "\n${YELLOW}🛡️  [6/7] Abriendo puertos en Firewall OCI (22, 80, 443, 3000, 8000)...${NC}"
 # Desbloquear puertos en iptables de Oracle Cloud
-iptables -I INPUT 1 -p tcp --dport 80 -j ACCEPT || true
-iptables -I INPUT 1 -p tcp --dport 443 -j ACCEPT || true
-iptables -I INPUT 1 -p tcp --dport 3000 -j ACCEPT || true
-iptables -I INPUT 1 -p tcp --dport 8000 -j ACCEPT || true
-netfilter-persistent save 2>/dev/null || iptables-save > /etc/iptables/rules.v4 2>/dev/null || true
+iptables -I INPUT 1 -p tcp --dport 22 -j ACCEPT 2>/dev/null || true
+iptables -I INPUT 1 -p tcp --dport 80 -j ACCEPT 2>/dev/null || true
+iptables -I INPUT 1 -p tcp --dport 443 -j ACCEPT 2>/dev/null || true
+iptables -I INPUT 1 -p tcp --dport 3000 -j ACCEPT 2>/dev/null || true
+iptables -I INPUT 1 -p tcp --dport 8000 -j ACCEPT 2>/dev/null || true
 
-# Configurar UFW si está activo
-if ufw status | grep -q "Status: active"; then
-    ufw allow 80/tcp
-    ufw allow 443/tcp
-    ufw allow 3000/tcp
-    ufw allow 8000/tcp
-    ufw allow 22/tcp
+# Configurar UFW
+if command -v ufw &> /dev/null; then
+    ufw allow 22/tcp 2>/dev/null || true
+    ufw allow 80/tcp 2>/dev/null || true
+    ufw allow 443/tcp 2>/dev/null || true
+    ufw allow 3000/tcp 2>/dev/null || true
+    ufw allow 8000/tcp 2>/dev/null || true
 fi
 echo -e "${GREEN}✅ Reglas de firewall configuradas.${NC}"
 
