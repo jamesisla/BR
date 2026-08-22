@@ -1,13 +1,12 @@
-
 'use client'
 
-import React from 'react'
+import React, { Suspense } from 'react'
 import { motion } from 'framer-motion'
-import { CheckCircle, ArrowRight, Package, Mail } from 'lucide-react'
+import { CheckCircle, ArrowRight, Package, Mail, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 
-export default function SuccessPage() {
+function SuccessContent() {
   const searchParams = useSearchParams()
   const orderId = searchParams.get('orderId')
 
@@ -49,5 +48,17 @@ export default function SuccessPage() {
         </motion.div>
       </div>
     </div>
+  )
+}
+
+export default function SuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="bg-[#f9f7f4] min-h-screen flex items-center justify-center p-20">
+        <Loader2 className="animate-spin text-slate-800" size={32} />
+      </div>
+    }>
+      <SuccessContent />
+    </Suspense>
   )
 }
