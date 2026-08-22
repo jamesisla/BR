@@ -797,14 +797,22 @@ export default function AdminDashboard() {
                  </div>
                  <div>
                     <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-2">Categoría</label>
-                    <select 
+                    <input 
+                      type="text"
+                      list="category-suggestions"
                       value={productForm.category}
                       onChange={(e) => setProductForm({...productForm, category: e.target.value})}
+                      placeholder="ej: accesorios, ropa, tecnología"
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/5 transition-all"
-                    >
-                       <option value="cafes">Cafés</option>
-                       <option value="accesorios">Accesorios</option>
-                    </select>
+                    />
+                    <datalist id="category-suggestions">
+                      <option value="general" />
+                      <option value="accesorios" />
+                      <option value="ropa" />
+                      <option value="tecnologia" />
+                      <option value="hogar" />
+                      <option value="cafes" />
+                    </datalist>
                  </div>
                  <div>
                     <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-2">Precio Base ($)</label>

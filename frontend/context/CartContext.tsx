@@ -33,7 +33,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   // Load from LocalStorage
   useEffect(() => {
-    const savedCart = localStorage.getItem('chacona_cart')
+    const savedCart = localStorage.getItem('tienda_cart')
     if (savedCart) {
       try {
         setCart(JSON.parse(savedCart))
@@ -45,7 +45,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   // Save to LocalStorage
   useEffect(() => {
-    localStorage.setItem('chacona_cart', JSON.stringify(cart))
+    localStorage.setItem('tienda_cart', JSON.stringify(cart))
   }, [cart])
 
   const addToCart = (product: any, quantity: number) => {

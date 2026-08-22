@@ -88,7 +88,7 @@ export default function ProductDetail() {
             animate={{ opacity: 1, y: 0 }}
           >
             <span style={{ color: 'var(--secondary)', fontWeight: 800, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.3em', marginBottom: '20px', display: 'block' }}>
-              Micro-Lote Seleccionado
+              Colección Seleccionada
             </span>
             <h1 className="font-serif" style={{ fontSize: '4rem', marginBottom: '20px', lineHeight: 1.1 }}>{product.name}</h1>
             
@@ -108,7 +108,7 @@ export default function ProductDetail() {
             </p>
 
             <p style={{ opacity: 0.6, lineHeight: 1.8, marginBottom: '50px', fontSize: '1.1rem' }}>
-              {product.description || "Un perfil complejo con notas florales y una acidez balanceada, cosechado a más de 1,800 metros sobre el nivel del mar."}
+              {product.description || "Diseño y fabricación de alta gama, pensado para ofrecerte la máxima durabilidad, rendimiento y estética excepcional."}
             </p>
 
             {/* Selection */}
@@ -131,15 +131,15 @@ export default function ProductDetail() {
                <div style={{ display: 'flex', gap: '15px' }}>
                   <Truck size={20} style={{ color: 'var(--secondary)' }} />
                   <div>
-                    <h5 style={{ fontSize: '12px', marginBottom: '5px' }}>Envio Express</h5>
-                    <p style={{ fontSize: '11px', opacity: 0.5 }}>24-48 horas en todo el país.</p>
+                    <h5 style={{ fontSize: '12px', marginBottom: '5px' }}>Envío Express</h5>
+                    <p style={{ fontSize: '11px', opacity: 0.5 }}>24-48 horas a todo el país.</p>
                   </div>
                </div>
                <div style={{ display: 'flex', gap: '15px' }}>
                   <RefreshCcw size={20} style={{ color: 'var(--secondary)' }} />
                   <div>
-                    <h5 style={{ fontSize: '12px', marginBottom: '5px' }}>Frescura Garantizada</h5>
-                    <p style={{ fontSize: '11px', opacity: 0.5 }}>Tostado bajo pedido.</p>
+                    <h5 style={{ fontSize: '12px', marginBottom: '5px' }}>Garantía Total</h5>
+                    <p style={{ fontSize: '11px', opacity: 0.5 }}>Calidad 100% asegurada.</p>
                   </div>
                </div>
             </div>

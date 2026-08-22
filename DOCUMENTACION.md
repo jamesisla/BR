@@ -1,77 +1,108 @@
-# 🕊️ Tienda Artisan - Documentación Completa
+# 🕊️ Tienda Artisan - Documentación Técnica y de Arquitectura
 
-Esta plataforma es un motor e-commerce genérico, minimalista y potente, diseñado para transformarse según las necesidades de cualquier marca a través de una interfaz administrativa intuitiva.
+**Tienda Artisan** es una plataforma e-commerce genérica orientada a emprendedores, diseñada para ofrecer máxima velocidad, elegancia y un consumo de recursos mínimo para correr en servidores en la nube de 1 vCPU y 1 GB de RAM (ej. Oracle Cloud E2.1.Micro).
 
 ---
 
-## 🚀 1. Despliegue Rápido (Docker)
+## 🏗️ 1. Arquitectura del Sistema
 
-El proyecto está 100% containerizado para correr en cualquier entorno (Local, VPS, Cloud).
+```mermaid
+graph TD
+    Client[Navegador del Cliente / Admin] -->|Puerto 80/443| Caddy[Caddy Reverse Proxy]
+    Caddy -->|/api/* y /static/*| GoBackend[Go Backend API - Puerto 8000]
+    Caddy -->|/*| NextFrontend[Next.js Production - Puerto 3000]
+    GoBackend -->|Lecturas / Escrituras WAL| SQLite[(SQLite Embedded DB)]
+    GoBackend -->|Preferencias & Webhooks| MercadoPago[Mercado Pago API]
+```
+
+### Stack Tecnológico:
+- **Backend:** Go 1.22+ (Gin Web Framework + GORM + SQLite Pure Go / Postgres).
+  - *Consumo de Memoria:* ~15 - 25 MB RAM.
+  - *Latencia:* Sub-milisegundo.
+- **Frontend:** Next.js 14 (React 18, TailwindCSS, Framer Motion, Lucide Icons).
+  - *Modo:* Standalone Production Server optimizado.
+- **Reverse Proxy:** Caddy Web Server (HTTP/2, compresión zstd/gzip, SSL Let's Encrypt automático).
+- **Base de Datos:** SQLite con WAL (*Write-Ahead Logging*) por defecto (zero-config, ultra-rápido, sin overhead de servidor externo) con soporte transparente para PostgreSQL si se define `DATABASE_URL`.
+
+---
+
+## ⚡ 2. Perfil de Recursos en OCI E2.1.Micro (1 GB RAM)
+
+| Componente | Consumo RAM Aproximado |
+| :--- | :--- |
+| **Sistema Operativo (Ubuntu Minimal)** | ~120 MB |
+| **Backend Go (Compilado nativo)** | ~18 MB |
+| **Frontend Next.js (Standalone)** | ~70 MB |
+| **Caddy Web Server** | ~15 MB |
+| **Memoria Libre Disponible** | **> 750 MB** |
+
+> [!TIP]
+> El script `install.sh` crea automáticamente un archivo de intercambio **SWAP de 2 GB** en `/swapfile`, garantizando que durante compilaciones de Node.js no se produzcan bloqueos por Out-Of-Memory (OOM).
+
+---
+
+## 🔌 3. Endpoints del API (Go)
+
+### Autenticación
+- `POST /api/auth/login`: Autenticación del panel administrativo mediante contraseña maestra. Retorna token de sesión.
+
+### Configuración de la Tienda (Wizard)
+- `GET /api/settings/`: Obtiene la configuración actual de la marca (nombre, logo, colores, textos, hero banner).
+- `POST /api/settings/`: Actualiza la configuración y la identidad visual de la tienda.
+
+### Catálogo de Productos
+- `GET /api/products/`: Lista productos activos con soporte para búsqueda `?q=termino` y filtro `?category=categoria`.
+- `GET /api/products/all`: Lista todos los productos (activos e inactivos) para el panel admin.
+- `GET /api/products/:slug`: Retorna el detalle de un producto por su slug.
+- `POST /api/products/`: Crea un nuevo producto.
+- `PUT /api/products/:id`: Modifica un producto existente.
+- `PATCH /api/products/:id/toggle-active`: Activa o desactiva un producto del catálogo público.
+- `DELETE /api/products/:id`: Elimina un producto permanentemente.
+- `POST /api/products/upload`: Subida de imágenes multipart (`file`).
+
+### Pedidos e Inventario
+- `POST /api/orders/`: Procesa una orden, valida el stock disponible y **descuenta las unidades atómicamente** dentro de una transacción.
+- `GET /api/orders/`: Lista todos los pedidos con sus items y productos asociados.
+- `GET /api/orders/:id`: Detalle de un pedido por ID.
+- `PATCH /api/orders/:id/status`: Actualiza el estado del pedido (`pending`, `paid`, `shipped`, `cancelled`).
+
+### Pagos (Mercado Pago)
+- `POST /api/payments/create-preference`: Genera una preferencia de Checkout Pro en Mercado Pago.
+- `POST /api/payments/webhook`: Escucha eventos IPN de Mercado Pago y marca pedidos como `paid` en tiempo real.
+
+---
+
+## 🛠️ 4. Comandos de Administración en el Servidor
 
 ```bash
-# Clonar y entrar al directorio
-cd TIENDA
+# Ver estado de los servicios
+systemctl status tienda-backend tienda-frontend caddy
 
-# Levantar toda la infraestructura
-docker-compose up -d --build
+# Reiniciar servicios
+sudo systemctl restart tienda-backend
+sudo systemctl restart tienda-frontend
+sudo systemctl restart caddy
+
+# Ver logs en vivo
+journalctl -u tienda-backend -f
+journalctl -u tienda-frontend -f
+journalctl -u caddy -f
+
+# Actualizar desde GitHub
+sudo bash update.sh
 ```
-*   **Tienda:** `http://localhost:3000`
-*   **Admin:** `http://localhost:3000/admin`
-*   **API:** `http://localhost:8000`
 
 ---
 
-## 🎨 2. Gestión de Identidad (El "Wizard")
+## 🔑 5. Variables de Entorno (`backend/.env`)
 
-La tienda es agnóstica al rubro. Puedes configurarla totalmente desde el **Panel Administrativo > Configuración**:
-
-*   **Identidad Visual:** Sube el logo y define colores primarios/secundarios que se aplican a toda la interfaz automáticamente.
-*   **Página de Inicio Dinámica:** Configura el título, subtítulo e imagen de portada (Hero Image) sin tocar una línea de código.
-*   **Pie de Página:** Personaliza el mensaje de copyright y créditos.
-
----
-
-## 📦 3. Motor de Inventario y Pedidos
-
-El sistema gestiona el flujo completo de venta:
-1.  **Stock Inteligente:** Al realizar una compra, el backend valida la disponibilidad y **descuenta automáticamente** las unidades del inventario.
-2.  **Estado de Pedidos:** Los pedidos se registran con estados (`pending`, `paid`, `shipped`) que puedes gestionar desde el dashboard.
-3.  **Eliminado Físico/Lógico:** Los productos pueden desactivarse (ocultarse) o eliminarse permanentemente de la base de datos.
-
----
-
-## 💳 4. Pagos en Línea (Mercado Pago)
-
-La tienda incluye una integración nativa con Mercado Pago:
-*   **Checkout Pro:** Redirección automática a la pasarela segura tras confirmar el pedido.
-*   **Webhooks:** Un sistema que escucha las notificaciones de Mercado Pago y marca los pedidos como "Pagados" en tiempo real sin intervención humana.
-*   **Configuración:** Consulta el archivo `MERCADO_PAGO.md` para ver cómo activar tus llaves de producción.
-
----
-
-## 🔍 5. Experiencia del Cliente (UX)
-
-*   **Buscador Avanzado:** Filtros por categoría, sugerencias interactivas y búsqueda por texto.
-*   **Carrito de Compras:** Animado con Framer Motion, persistente en el navegador del cliente.
-*   **Compra como Invitado:** Permite finalizar pedidos sin necesidad de registro obligatorio, reduciendo el abandono de carrito.
-
----
-
-## 🛠️ 6. Stack Tecnológico
-
-*   **Backend:** FastAPI (Python 3.11), SQLAlchemy, PostgreSQL/SQLite.
-*   **Frontend:** Next.js 14, TailwindCSS, Framer Motion, Lucide React.
-*   **Infraestructura:** Docker & Docker Compose.
-
----
-
-## 🔑 7. Variables de Entorno Clave
-
-| Variable | Descripción | Valor Ejemplo |
+| Variable | Descripción | Valor por Defecto |
 | :--- | :--- | :--- |
-| `NEXT_PUBLIC_API_URL` | URL donde el frontend busca la API | `https://api.tusitio.com/api` |
-| `BACKEND_URL` | URL base del servidor (imágenes) | `https://api.tusitio.com` |
-| `MP_ACCESS_TOKEN` | Token de Mercado Pago | `APP_USR-1234...` |
-
----
-*Documentación generada el 10 de Mayo de 2026.*
+| `PORT` | Puerto de escucha del backend | `8000` |
+| `GIN_MODE` | Modo del router Gin (`release` o `debug`) | `release` |
+| `DATABASE_URL` | Archivo SQLite o conexión PostgreSQL | `ecommerce.db` |
+| `BACKEND_URL` | URL pública del backend (para URLs de imágenes) | `http://localhost:8000` |
+| `FRONTEND_URL` | URL pública de la tienda (para retornos de pago) | `http://localhost:3000` |
+| `ADMIN_PASSWORD` | Contraseña maestra del panel `/admin` | `admin123` |
+| `MP_ACCESS_TOKEN` | Token de producción o prueba de Mercado Pago | `TEST-...` |
+| `UPLOAD_DIR` | Directorio en disco para imágenes subidas | `./uploads` |

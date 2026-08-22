@@ -1,0 +1,162 @@
+package main
+
+import (
+	"context"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+
+	"tienda-backend/internal/config"
+	"tienda-backend/internal/database"
+	"tienda-backend/internal/handlers"
+	"tienda-backend/internal/services"
+)
+
+func main() {
+	cfg := config.Load()
+
+	if cfg.GinMode == "release" {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
+	// 1. Initialize Database
+	db, err := database.InitDB(cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("Error crítico al inicializar la base de datos: %v", err)
+	}
+
+	// 2. Initialize Services
+	mpService := services.NewMercadoPagoService(cfg)
+
+	// 3. Initialize Handlers
+	authHandler := handlers.NewAuthHandler(cfg)
+	productHandler := handlers.NewProductHandler(db, cfg)
+	settingsHandler := handlers.NewSettingsHandler(db)
+	orderHandler := handlers.NewOrderHandler(db)
+	paymentHandler := handlers.NewPaymentHandler(db, mpService)
+
+	// 4. Create Router
+	r := gin.New()
+	r.Use(gin.Logger(), gin.Recovery())
+
+	// 5. Setup CORS
+	corsConfig := cors.Config{
+		AllowAllOrigins:  true,
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization", "Accept", "X-Requested-With"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}
+	r.Use(cors.New(corsConfig))
+
+	// 6. Ensure Upload Directory exists and serve static uploads
+	uploadDir := cfg.UploadDir
+	if uploadDir == "" {
+		uploadDir = "./uploads"
+	}
+	_ = os.MkdirAll(uploadDir, 0755)
+
+	// Serve uploads at both /static/uploads and /uploads for total compatibility
+	r.Static("/static/uploads", uploadDir)
+	r.Static("/uploads", uploadDir)
+
+	// 7. Register API Routes
+	api := r.Group("/api")
+	{
+		// Health check
+		api.GET("/health", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+				"status":  "ok",
+				"service": "tienda-backend-go",
+				"time":    time.Now().Format(time.RFC3339),
+			})
+		})
+
+		// Auth
+		authGroup := api.Group("/auth")
+		{
+			authGroup.POST("/login", authHandler.Login)
+		}
+
+		// Store Settings & Branding
+		settingsGroup := api.Group("/settings")
+		{
+			settingsGroup.GET("/", settingsHandler.GetSettings)
+			settingsGroup.GET("", settingsHandler.GetSettings)
+			settingsGroup.POST("/", settingsHandler.UpdateSettings)
+			settingsGroup.POST("", settingsHandler.UpdateSettings)
+		}
+
+		// Products
+		productGroup := api.Group("/products")
+		{
+			productGroup.GET("/", productHandler.ListProducts)
+			productGroup.GET("", productHandler.ListProducts)
+			productGroup.GET("/all", productHandler.ListAllProducts)
+			productGroup.POST("/", productHandler.CreateProduct)
+			productGroup.POST("", productHandler.CreateProduct)
+			productGroup.POST("/upload", productHandler.UploadImage)
+			productGroup.GET("/:slug", productHandler.GetProductBySlug)
+			productGroup.PUT("/:id", productHandler.UpdateProduct)
+			productGroup.PATCH("/:id/toggle-active", productHandler.ToggleProductActive)
+			productGroup.DELETE("/:id", productHandler.DeleteProduct)
+		}
+
+		// Orders
+		orderGroup := api.Group("/orders")
+		{
+			orderGroup.GET("/", orderHandler.ListOrders)
+			orderGroup.GET("", orderHandler.ListOrders)
+			orderGroup.POST("/", orderHandler.CreateOrder)
+			orderGroup.POST("", orderHandler.CreateOrder)
+			orderGroup.GET("/:id", orderHandler.GetOrder)
+			orderGroup.PATCH("/:id/status", orderHandler.UpdateOrderStatus)
+		}
+
+		// Payments
+		paymentGroup := api.Group("/payments")
+		{
+			paymentGroup.POST("/create-preference", paymentHandler.CreatePreference)
+			paymentGroup.POST("/webhook", paymentHandler.Webhook)
+		}
+	}
+
+	// 8. Start HTTP Server with Graceful Shutdown
+	addr := ":" + cfg.Port
+	srv := &http.Server{
+		Addr:         addr,
+		Handler:      r,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	go func() {
+		log.Printf("🚀 Tienda Backend (Go High Performance) iniciado en http://0.0.0.0%s", addr)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Error al iniciar el servidor: %v", err)
+		}
+	}()
+
+	// Graceful shutdown on SIGINT / SIGTERM
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Println("Apagando servidor de forma segura...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("Forzado de apagado del servidor: %v", err)
+	}
+
+	log.Println("Servidor detenido correctamente.")
+}

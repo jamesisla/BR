@@ -61,10 +61,11 @@ function Header({ config }: { config: StoreConfig | null }) {
 
       <nav className="flex justify-center" style={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}>
         <div className="flex">
-          <Link href="/category/cafes" className="nav-link">Cafés</Link>
+          <Link href="/" className="nav-link">Inicio</Link>
+          <Link href="/#productos" className="nav-link">Catálogo</Link>
           <Link href="/category/accesorios" className="nav-link">Accesorios</Link>
-          <Link href="#" className="nav-link">Suscripción</Link>
-          <Link href="#" className="nav-link" style={{ color: 'var(--secondary)' }}>Ofertas</Link>
+          <Link href="/category/general" className="nav-link">Colección</Link>
+          <Link href="/admin" className="nav-link" style={{ color: 'var(--secondary)' }}>Panel Admin</Link>
         </div>
       </nav>
     </header>
