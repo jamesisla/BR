@@ -26,13 +26,11 @@ func InitDB(databaseURL string) (*gorm.DB, error) {
 	} else {
 		// SQLite (pure Go driver, no CGO required)
 		dbFile := databaseURL
-		if dbFile == "" || dbFile == "ecommerce.db" {
+		if dbFile == "" {
 			dbFile = "ecommerce.db"
 		}
-		// Enable WAL mode & foreign keys for high performance SQLite
-		dsn := fmt.Sprintf("%s?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=foreign_keys(1)", dbFile)
 		log.Printf("Conectando a SQLite (%s)...", dbFile)
-		dialector = sqlite.Open(dsn)
+		dialector = sqlite.Open(dbFile)
 	}
 
 	gormConfig := &gorm.Config{
@@ -42,6 +40,14 @@ func InitDB(databaseURL string) (*gorm.DB, error) {
 	db, err := gorm.Open(dialector, gormConfig)
 	if err != nil {
 		return nil, fmt.Errorf("error al abrir base de datos: %w", err)
+	}
+
+	if !isPostgres {
+		// Activar WAL y optimizaciones de SQLite directamente
+		db.Exec("PRAGMA journal_mode = WAL;")
+		db.Exec("PRAGMA busy_timeout = 5000;")
+		db.Exec("PRAGMA synchronous = NORMAL;")
+		db.Exec("PRAGMA foreign_keys = ON;")
 	}
 
 	sqlDB, err := db.DB()
