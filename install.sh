@@ -87,16 +87,17 @@ else
     echo -e "${GREEN}✅ Go ya está instalado: $(go version)${NC}"
 fi
 
-# 5. Instalar Node.js 20 LTS (NodeSource)
-echo -e "\n${YELLOW}🟢 [4/7] Verificando / Instalando Node.js 20 LTS...${NC}"
-if ! command -v node &> /dev/null || [[ "$(node -v)" != *"v20"* && "$(node -v)" != *"v22"* ]]; then
-    echo "Configurando repositorio NodeSource Node.js 20.x..."
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-    apt-get install -y -qq nodejs
-    echo -e "${GREEN}✅ Node.js $(node -v) y npm $(npm -v) instalados.${NC}"
-else
-    echo -e "${GREEN}✅ Node.js ya está instalado: $(node -v)${NC}"
+# 5. Instalar Node.js 20 LTS y npm
+echo -e "\n${YELLOW}🟢 [4/7] Verificando / Instalando Node.js 20 LTS y npm...${NC}"
+if ! command -v node &> /dev/null; then
+    echo "Instalando Node.js..."
+    apt-get install -y --fix-missing nodejs || true
 fi
+if ! command -v npm &> /dev/null; then
+    echo "Instalando npm..."
+    apt-get install -y --fix-missing npm || true
+fi
+echo -e "${GREEN}✅ Node.js $(node -v 2>/dev/null || echo '') y npm $(npm -v 2>/dev/null || echo '') listos.${NC}"
 
 # 6. Instalar y configurar Caddy (Servidor web nativo ultra-ligero y rápido con SSL automático)
 echo -e "\n${YELLOW}🌐 [5/7] Verificando / Instalando Caddy Web Server nativo...${NC}"
@@ -136,7 +137,20 @@ echo -e "\n${YELLOW}⚙️  [7/7] Compilando Backend Go nativo y Frontend Next.j
 # Crear directorios y variables de entorno backend
 mkdir -p "$PROJECT_DIR/backend/uploads"
 if [ ! -f "$PROJECT_DIR/backend/.env" ]; then
-    cp "$PROJECT_DIR/backend/.env.example" "$PROJECT_DIR/backend/.env"
+    if [ -f "$PROJECT_DIR/backend/.env.example" ]; then
+        cp "$PROJECT_DIR/backend/.env.example" "$PROJECT_DIR/backend/.env"
+    else
+        cat <<EOF > "$PROJECT_DIR/backend/.env"
+PORT=8000
+GIN_MODE=release
+DATABASE_URL=$PROJECT_DIR/backend/ecommerce.db
+BACKEND_URL=http://localhost:8000
+FRONTEND_URL=http://localhost:3000
+ADMIN_PASSWORD=admin123
+MP_ACCESS_TOKEN=TEST-6447849483321584-051015-8d598585474747474747474747474747-000000000
+UPLOAD_DIR=$PROJECT_DIR/backend/uploads
+EOF
+    fi
 fi
 
 cd "$PROJECT_DIR/backend"

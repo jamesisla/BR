@@ -1,18 +1,20 @@
-
 # Node
 node_modules/
 .next/
 out/
 build/
-.env*
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
 
-# Python
-__pycache__/
-*.pyc
-.venv/
-env/
-venv/
-.pytest_cache/
+# Go & Binary
+backend/server
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/ecommerce.db*
 
 # Databases
 *.sqlite3
@@ -21,7 +23,3 @@ postgres_data/
 # OS
 .DS_Store
 Thumbs.db
-
-# Project Specific
-backend/app/static/uploads/*
-!backend/app/static/uploads/.gitkeep
