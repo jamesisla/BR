@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { ShoppingBag, ArrowLeft, MessageCircle, Truck, CreditCard, ShieldCheck, Check, Store } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
-import { useCart, formatCLP } from '../context/CartContext'
+import { useCart, formatCLP, formatImageUrl } from '../context/CartContext'
 
 interface Product {
   id: string
@@ -94,7 +94,7 @@ export default function ProductDetailPage() {
           >
             <div className="aspect-[4/5] bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-lg">
                <img 
-                 src={product.image_url || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=1200&auto=format&fit=crop"} 
+                 src={formatImageUrl(product.image_url) || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=1200&auto=format&fit=crop"} 
                  alt={product.name}
                  className="w-full h-full object-cover"
                  onError={(e: any) => {

@@ -262,11 +262,8 @@ func (h *ProductHandler) UploadImage(c *gin.Context) {
 	// Asegurar permisos universales de lectura
 	_ = os.Chmod(dst, 0666)
 
-	backendURL := strings.TrimRight(h.cfg.BackendURL, "/")
+	// URL siempre relativa (/static/uploads/...) para que funcione en cualquier dominio o IP sin depender de localhost
 	fileURL := fmt.Sprintf("/static/uploads/%s", filename)
-	if backendURL != "" {
-		fileURL = fmt.Sprintf("%s/static/uploads/%s", backendURL, filename)
-	}
 
 	log.Printf("✅ [UPLOAD SUCCESS] Guardado exitoso. URL pública asignada: %s", fileURL)
 

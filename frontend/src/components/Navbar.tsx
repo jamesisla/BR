@@ -1,10 +1,11 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { ShoppingBag, Search, User } from 'lucide-react'
-import { useCart } from '../context/CartContext'
+import { useCart, formatImageUrl } from '../context/CartContext'
 
 export default function Navbar() {
   const { totalItems, setIsCartOpen, setIsSearchOpen, config } = useCart()
+  const logoUrl = formatImageUrl(config?.logo_url)
 
   return (
     <header className="bg-white/95 backdrop-blur-md border-b border-black/5 sticky top-0 z-40 w-full transition-all">
@@ -22,8 +23,8 @@ export default function Navbar() {
         
         <Link to="/" className="text-decoration-none flex-1 text-center max-w-[60%] sm:max-w-none">
           <div className="flex items-center gap-2.5 justify-center">
-            {config?.logo_url ? (
-              <img src={config.logo_url} alt={config.name} className="h-8 sm:h-10 w-auto object-contain max-w-[120px]" />
+            {logoUrl ? (
+              <img src={logoUrl} alt={config?.name || 'Logo'} className="h-8 sm:h-10 w-auto object-contain max-w-[120px]" />
             ) : null}
             <h1 className="font-serif text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight truncate" style={{ color: 'var(--primary)' }}>
               {config?.name || 'TIENDA DEMO'}

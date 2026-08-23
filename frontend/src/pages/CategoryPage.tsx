@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { MessageCircle } from 'lucide-react'
-import { formatCLP } from '../context/CartContext'
+import { formatCLP, formatImageUrl } from '../context/CartContext'
 
 interface Product {
   id: string
@@ -59,7 +59,7 @@ export default function CategoryPage() {
                 <div className="bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 flex flex-col h-full">
                   <div className="aspect-[4/5] bg-slate-50 overflow-hidden relative">
                     <img 
-                      src={product.image_url || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=800&auto=format&fit=crop"}
+                      src={formatImageUrl(product.image_url) || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=800&auto=format&fit=crop"}
                       alt={product.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       onError={(e: any) => {

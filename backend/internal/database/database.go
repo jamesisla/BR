@@ -87,6 +87,14 @@ func InitDB(databaseURL string) (*gorm.DB, error) {
 		}
 	}
 
+	// Limpiar automáticamente cualquier URL antigua con 'localhost' en la base de datos
+	_ = db.Exec("UPDATE products SET image_url = REPLACE(image_url, 'http://localhost:8000', '') WHERE image_url LIKE '%localhost:8000%'").Error
+	_ = db.Exec("UPDATE products SET image_url = REPLACE(image_url, 'http://localhost', '') WHERE image_url LIKE '%localhost%'").Error
+	_ = db.Exec("UPDATE store_settings SET hero_image_url = REPLACE(hero_image_url, 'http://localhost:8000', '') WHERE hero_image_url LIKE '%localhost:8000%'").Error
+	_ = db.Exec("UPDATE store_settings SET hero_image_url = REPLACE(hero_image_url, 'http://localhost', '') WHERE hero_image_url LIKE '%localhost%'").Error
+	_ = db.Exec("UPDATE store_settings SET logo_url = REPLACE(logo_url, 'http://localhost:8000', '') WHERE logo_url LIKE '%localhost:8000%'").Error
+	_ = db.Exec("UPDATE store_settings SET logo_url = REPLACE(logo_url, 'http://localhost', '') WHERE logo_url LIKE '%localhost%'").Error
+
 	// Seed initial data if tables are empty
 	seedInitialData(db)
 

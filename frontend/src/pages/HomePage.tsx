@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { MessageCircle, ShieldCheck, Truck, RefreshCw } from 'lucide-react'
-import { useCart, formatCLP } from '../context/CartContext'
+import { useCart, formatCLP, formatImageUrl } from '../context/CartContext'
 
 interface Product {
   id: string
@@ -33,7 +33,7 @@ export default function HomePage() {
       })
   }, [])
 
-  const heroImage = config?.hero_image_url || "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=2000&auto=format&fit=crop"
+  const heroImage = formatImageUrl(config?.hero_image_url) || "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=2000&auto=format&fit=crop"
   const rawNumber = config?.whatsapp_number || '+56912345678'
   const phone = rawNumber.replace(/[^0-9]/g, '')
 
@@ -123,7 +123,7 @@ export default function HomePage() {
                 <div className="bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 flex flex-col h-full">
                   <div className="aspect-[4/5] bg-slate-50 overflow-hidden relative">
                     <img 
-                      src={product.image_url || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=800&auto=format&fit=crop"}
+                      src={formatImageUrl(product.image_url) || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=800&auto=format&fit=crop"}
                       alt={product.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       onError={(e: any) => {

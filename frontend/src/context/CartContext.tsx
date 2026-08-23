@@ -32,6 +32,18 @@ export const formatCLP = (amount: number | string) => {
   }).format(num)
 }
 
+// Limpiador universal de URLs de imágenes (corrige cualquier URL con localhost)
+export const formatImageUrl = (url?: string) => {
+  if (!url) return ''
+  if (url.startsWith('http://localhost:8000')) {
+    return url.replace('http://localhost:8000', '')
+  }
+  if (url.startsWith('http://localhost')) {
+    return url.replace('http://localhost', '')
+  }
+  return url
+}
+
 interface CartContextType {
   cart: CartItem[]
   addToCart: (product: any, quantity: number) => void
