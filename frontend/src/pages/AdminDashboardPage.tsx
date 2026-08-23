@@ -28,18 +28,79 @@ import {
 import { Link, useNavigate } from 'react-router-dom'
 import { useCart, formatCLP } from '../context/CartContext'
 
+// Compresor de imágenes en el cliente: Convierte HEIC de iPhone a JPEG y reduce a ~150KB en milisegundos
+async function compressImage(file: File, maxWidth = 1200, maxHeight = 1200, quality = 0.85): Promise<File> {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith('image/')) {
+      resolve(file)
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = (readerEvent) => {
+      const img = new Image()
+      img.onload = () => {
+        let width = img.width
+        let height = img.height
+
+        if (width > maxWidth || height > maxHeight) {
+          if (width > height) {
+            height = Math.round((height * maxWidth) / width)
+            width = maxWidth
+          } else {
+            width = Math.round((width * maxHeight) / height)
+            height = maxHeight
+          }
+        }
+
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          resolve(file)
+          return
+        }
+
+        ctx.drawImage(img, 0, 0, width, height)
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const cleanName = file.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9_-]/g, "_") + ".jpg"
+              const newFile = new File([blob], cleanName, {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              })
+              resolve(newFile)
+            } else {
+              resolve(file)
+            }
+          },
+          'image/jpeg',
+          quality
+        )
+      }
+      img.onerror = () => resolve(file)
+      img.src = readerEvent.target?.result as string
+    }
+    reader.onerror = () => resolve(file)
+    reader.readAsDataURL(file)
+  })
+}
+
 export default function AdminDashboardPage() {
   const navigate = useNavigate()
   const { reloadConfig } = useCart()
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const cameraInputRef = useRef<HTMLInputElement>(null)
-  const logoInputRef = useRef<HTMLInputElement>(null)
-  const heroInputRef = useRef<HTMLInputElement>(null)
   
   const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'settings'>('orders') 
   const [uploading, setUploading] = useState(false)
   const [logoUploading, setLogoUploading] = useState(false)
   const [heroUploading, setHeroUploading] = useState(false)
+  
+  const [productImagePreview, setProductImagePreview] = useState<string>('')
+  const [logoPreview, setLogoPreview] = useState<string>('')
+  const [heroPreview, setHeroPreview] = useState<string>('')
+
   const [orders, setOrders] = useState<any[]>([])
   const [products, setProducts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -105,6 +166,8 @@ export default function AdminDashboardPage() {
           bank_details: data.bank_details || 'BancoEstado | CuentaRUT: 12.345.678-9 | Titular: Tienda Demo | Correo: pagos@tienda.cl',
           currency: data.currency || 'CLP'
         })
+        setLogoPreview(data.logo_url || '')
+        setHeroPreview(data.hero_image_url || '')
       }
     } catch (e) {
       console.error(e)
@@ -195,6 +258,7 @@ export default function AdminDashboardPage() {
         stock: product.stock || 0,
         image_url: product.image_url || ''
       })
+      setProductImagePreview(product.image_url || '')
     } else {
       setEditingProduct(null)
       setProductForm({
@@ -206,6 +270,7 @@ export default function AdminDashboardPage() {
         stock: 10,
         image_url: ''
       })
+      setProductImagePreview('')
     }
     setIsModalOpen(true)
   }
@@ -228,6 +293,18 @@ export default function AdminDashboardPage() {
 
   const handleProductSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (uploading) {
+      alert('Por favor espera un momento a que la foto termine de subirse.')
+      return
+    }
+
+    let finalImageUrl = productForm.image_url
+    if (finalImageUrl && finalImageUrl.startsWith('blob:')) {
+      alert('La foto aún se está procesando. Espera unos segundos y vuelve a pulsar Guardar.')
+      return
+    }
+
     const method = editingProduct ? 'PUT' : 'POST'
     const url = editingProduct 
       ? `/api/products/${editingProduct.id}`
@@ -239,6 +316,7 @@ export default function AdminDashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...productForm,
+          image_url: finalImageUrl,
           base_price: Math.round(Number(productForm.base_price))
         })
       })
@@ -260,15 +338,19 @@ export default function AdminDashboardPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Vista previa instantánea
-    const localPreview = URL.createObjectURL(file)
-    setProductForm(prev => ({ ...prev, image_url: localPreview }))
-
     setUploading(true)
-    const formData = new FormData()
-    formData.append('file', file)
-
     try {
+      // 1. Comprimir en el navegador
+      const compressed = await compressImage(file, 1200, 1200, 0.85)
+
+      // 2. Mostrar vista previa local
+      const preview = URL.createObjectURL(compressed)
+      setProductImagePreview(preview)
+
+      // 3. Subir archivo
+      const formData = new FormData()
+      formData.append('file', compressed)
+
       const response = await fetch('/api/products/upload', {
         method: 'POST',
         body: formData
@@ -277,13 +359,14 @@ export default function AdminDashboardPage() {
       if (response.ok) {
         const data = await response.json()
         setProductForm(prev => ({ ...prev, image_url: data.url }))
+        setProductImagePreview(data.url)
       } else {
         const errData = await response.json().catch(() => ({}))
-        alert('Error al subir imagen: ' + (errData.detail || response.statusText))
+        alert('Error al subir imagen al servidor: ' + (errData.detail || response.statusText))
       }
     } catch (error: any) {
       console.error(error)
-      alert('Error de conexión al subir imagen: ' + error.message)
+      alert('Error al procesar/subir imagen: ' + error.message)
     } finally {
       setUploading(false)
       e.target.value = ''
@@ -294,14 +377,15 @@ export default function AdminDashboardPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    const localPreview = URL.createObjectURL(file)
-    setStoreSettings(prev => ({ ...prev, logo_url: localPreview }))
-
     setLogoUploading(true)
-    const formData = new FormData()
-    formData.append('file', file)
-
     try {
+      const compressed = await compressImage(file, 800, 800, 0.9)
+      const preview = URL.createObjectURL(compressed)
+      setLogoPreview(preview)
+
+      const formData = new FormData()
+      formData.append('file', compressed)
+
       const response = await fetch('/api/products/upload', {
         method: 'POST',
         body: formData
@@ -310,6 +394,7 @@ export default function AdminDashboardPage() {
       if (response.ok) {
         const data = await response.json()
         setStoreSettings(prev => ({ ...prev, logo_url: data.url }))
+        setLogoPreview(data.url)
       } else {
         const errData = await response.json().catch(() => ({}))
         alert('Error al subir logo: ' + (errData.detail || response.statusText))
@@ -327,14 +412,15 @@ export default function AdminDashboardPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    const localPreview = URL.createObjectURL(file)
-    setStoreSettings(prev => ({ ...prev, hero_image_url: localPreview }))
-
     setHeroUploading(true)
-    const formData = new FormData()
-    formData.append('file', file)
-
     try {
+      const compressed = await compressImage(file, 1600, 1200, 0.85)
+      const preview = URL.createObjectURL(compressed)
+      setHeroPreview(preview)
+
+      const formData = new FormData()
+      formData.append('file', compressed)
+
       const response = await fetch('/api/products/upload', {
         method: 'POST',
         body: formData
@@ -343,6 +429,7 @@ export default function AdminDashboardPage() {
       if (response.ok) {
         const data = await response.json()
         setStoreSettings(prev => ({ ...prev, hero_image_url: data.url }))
+        setHeroPreview(data.url)
       } else {
         const errData = await response.json().catch(() => ({}))
         alert('Error al subir portada: ' + (errData.detail || response.statusText))
@@ -358,6 +445,12 @@ export default function AdminDashboardPage() {
 
   const handleSettingsSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (logoUploading || heroUploading) {
+      alert('Por favor espera a que las fotos terminen de subirse.')
+      return
+    }
+
     try {
       const res = await fetch('/api/settings/', {
         method: 'POST',
@@ -574,11 +667,16 @@ export default function AdminDashboardPage() {
                        <div>
                           <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-1">Logo de la Tienda</label>
                           <div className="flex gap-4 items-center">
-                             <div className="w-16 h-16 bg-slate-50 border border-dashed border-slate-200 rounded-2xl flex items-center justify-center overflow-hidden">
-                                {storeSettings.logo_url ? (
-                                  <img src={storeSettings.logo_url} className="w-full h-full object-contain" />
+                             <div className="w-16 h-16 bg-slate-50 border border-dashed border-slate-200 rounded-2xl flex items-center justify-center overflow-hidden relative">
+                                {(logoPreview || storeSettings.logo_url) ? (
+                                  <img src={logoPreview || storeSettings.logo_url} className="w-full h-full object-contain" alt="Logo" />
                                 ) : (
                                   <Palette className="text-slate-300" size={24} />
+                                )}
+                                {logoUploading && (
+                                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                     <Loader2 className="animate-spin text-white" size={16} />
+                                  </div>
                                 )}
                              </div>
                              <div className="flex-1">
@@ -601,8 +699,8 @@ export default function AdminDashboardPage() {
                        <div className="pt-4 border-t border-slate-100">
                           <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-2">Imagen de Portada (Hero Banner)</label>
                           <label className="cursor-pointer block w-full h-36 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl overflow-hidden hover:border-slate-400 transition-all relative mb-3">
-                             {storeSettings.hero_image_url ? (
-                               <img src={storeSettings.hero_image_url} className="w-full h-full object-cover" />
+                             {(heroPreview || storeSettings.hero_image_url) ? (
+                               <img src={heroPreview || storeSettings.hero_image_url} className="w-full h-full object-cover" alt="Portada" />
                              ) : (
                                <div className="flex flex-col items-center justify-center h-full gap-1.5 text-slate-400">
                                   <Camera size={28} />
@@ -611,8 +709,8 @@ export default function AdminDashboardPage() {
                              )}
                              <input type="file" className="sr-only" onChange={handleHeroUpload} accept="image/*" disabled={heroUploading} />
                              {heroUploading && (
-                               <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
-                                  <Loader2 className="animate-spin text-slate-900" />
+                               <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                  <Loader2 className="animate-spin text-white" size={24} />
                                </div>
                              )}
                           </label>
@@ -670,7 +768,7 @@ export default function AdminDashboardPage() {
                     </div>
                   </div>
                   
-                  <button type="submit" className="btn-primary w-full py-4 text-xs font-bold rounded-2xl shadow-xl justify-center">
+                  <button type="submit" disabled={logoUploading || heroUploading} className="btn-primary w-full py-4 text-xs font-bold rounded-2xl shadow-xl justify-center">
                      <Save size={16} /> Guardar Configuración
                   </button>
                </form>
@@ -682,7 +780,14 @@ export default function AdminDashboardPage() {
                 <div key={product.id} className={`p-4 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col justify-between ${!product.is_active ? 'opacity-40' : ''}`}>
                   <div className="flex gap-3 mb-3">
                     <div className="w-16 h-20 bg-white rounded-xl overflow-hidden flex-shrink-0 border border-slate-100">
-                       <img src={product.image_url || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=200&auto=format&fit=crop"} className="w-full h-full object-cover" />
+                       <img 
+                         src={product.image_url || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=200&auto=format&fit=crop"} 
+                         className="w-full h-full object-cover" 
+                         alt={product.name}
+                         onError={(e: any) => {
+                           e.target.src = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=200&auto=format&fit=crop"
+                         }}
+                       />
                     </div>
                     <div className="flex-1 min-w-0">
                       <span className="text-[9px] uppercase font-bold tracking-wider text-slate-400 capitalize">{product.category}</span>
@@ -790,10 +895,22 @@ export default function AdminDashboardPage() {
                     <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-1.5">Foto del Producto</label>
                     <div className="flex gap-3 items-center">
                        <label className="cursor-pointer w-20 h-24 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl flex items-center justify-center overflow-hidden flex-shrink-0 relative hover:border-slate-400 transition-all">
-                          {productForm.image_url ? (
-                            <img src={productForm.image_url} className="w-full h-full object-cover" />
+                          {(productImagePreview || productForm.image_url) ? (
+                            <img 
+                              src={productImagePreview || productForm.image_url} 
+                              className="w-full h-full object-cover" 
+                              alt="Preview"
+                              onError={(e: any) => {
+                                e.target.src = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=200&auto=format&fit=crop"
+                              }}
+                            />
                           ) : (
                             <Camera className="text-slate-300" size={28} />
+                          )}
+                          {uploading && (
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                               <Loader2 className="animate-spin text-white" size={20} />
+                            </div>
                           )}
                           <input type="file" onChange={handleImageUpload} className="sr-only" accept="image/*" disabled={uploading} />
                        </label>
@@ -802,13 +919,16 @@ export default function AdminDashboardPage() {
                           <label className="cursor-pointer w-full py-2.5 px-3 bg-slate-900 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-slate-800 shadow-md">
                             <input type="file" onChange={handleImageUpload} className="sr-only" accept="image/*" disabled={uploading} />
                             {uploading ? <Loader2 size={16} className="animate-spin" /> : <Camera size={16} />}
-                            <span>{uploading ? 'Subiendo foto...' : 'Tomar Foto / Elegir Galería'}</span>
+                            <span>{uploading ? 'Procesando y subiendo...' : 'Tomar Foto / Elegir Galería'}</span>
                           </label>
                           
                           <input 
                              type="text" 
                              value={productForm.image_url}
-                             onChange={(e) => setProductForm({...productForm, image_url: e.target.value})}
+                             onChange={(e) => {
+                               setProductForm({...productForm, image_url: e.target.value})
+                               setProductImagePreview(e.target.value)
+                             }}
                              placeholder="O pegar URL de imagen..."
                              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-mono"
                           />
@@ -897,8 +1017,16 @@ export default function AdminDashboardPage() {
                  </div>
 
                  <div className="pt-2">
-                    <button type="submit" className="btn-primary w-full py-4 text-xs font-bold justify-center rounded-2xl shadow-xl">
-                       <Save size={16} /> {editingProduct ? 'Guardar Cambios' : 'Publicar Producto'}
+                    <button 
+                      type="submit" 
+                      disabled={uploading}
+                      className="btn-primary w-full py-4 text-xs font-bold justify-center rounded-2xl shadow-xl"
+                    >
+                       {uploading ? (
+                         <><Loader2 className="animate-spin" size={16} /> Subiendo imagen...</>
+                       ) : (
+                         <><Save size={16} /> {editingProduct ? 'Guardar Cambios' : 'Publicar Producto'}</>
+                       )}
                     </button>
                  </div>
               </form>
