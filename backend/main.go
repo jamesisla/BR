@@ -79,8 +79,26 @@ func main() {
 	}
 	_ = os.MkdirAll(absUploadDir, 0777)
 
-	r.Static("/static/uploads", absUploadDir)
-	r.Static("/uploads", absUploadDir)
+	// Handler explícito para servir archivos de subida desde disco con headers y protección
+	serveUploadedFile := func(c *gin.Context) {
+		paramPath := c.Param("filepath")
+		cleanPath := filepath.Clean("/" + paramPath)
+		diskPath := filepath.Join(absUploadDir, cleanPath)
+
+		if info, err := os.Stat(diskPath); err == nil && !info.IsDir() {
+			c.Header("Cache-Control", "public, max-age=86400")
+			c.Header("Access-Control-Allow-Origin", "*")
+			c.File(diskPath)
+			return
+		}
+
+		c.JSON(http.StatusNotFound, gin.H{"detail": "Imagen no encontrada"})
+	}
+
+	r.GET("/static/uploads/*filepath", serveUploadedFile)
+	r.GET("/uploads/*filepath", serveUploadedFile)
+	r.HEAD("/static/uploads/*filepath", serveUploadedFile)
+	r.HEAD("/uploads/*filepath", serveUploadedFile)
 
 	// 7. Register API Routes
 	api := r.Group("/api")
@@ -310,17 +328,25 @@ func setupEmbeddedSPA(r *gin.Engine, absUploadDir string) {
 			fileName := strings.TrimPrefix(reqPath, "static/uploads/")
 			diskFile := filepath.Join(absUploadDir, fileName)
 			if _, err := os.Stat(diskFile); err == nil {
+				c.Header("Cache-Control", "public, max-age=86400")
+				c.Header("Access-Control-Allow-Origin", "*")
 				c.File(diskFile)
 				return
 			}
+			c.JSON(http.StatusNotFound, gin.H{"detail": "Imagen no encontrada"})
+			return
 		}
 		if strings.HasPrefix(reqPath, "uploads/") {
 			fileName := strings.TrimPrefix(reqPath, "uploads/")
 			diskFile := filepath.Join(absUploadDir, fileName)
 			if _, err := os.Stat(diskFile); err == nil {
+				c.Header("Cache-Control", "public, max-age=86400")
+				c.Header("Access-Control-Allow-Origin", "*")
 				c.File(diskFile)
 				return
 			}
+			c.JSON(http.StatusNotFound, gin.H{"detail": "Imagen no encontrada"})
+			return
 		}
 
 		// 2. Si es una ruta de API inexistente, responder 404 JSON

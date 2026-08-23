@@ -242,9 +242,12 @@ func (h *ProductHandler) UploadImage(c *gin.Context) {
 	dst := filepath.Join(absUploadDir, filename)
 
 	if err := c.SaveUploadedFile(file, dst); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Error al guardar el archivo: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Error al guardar el archivo en el servidor: " + err.Error()})
 		return
 	}
+
+	// Asegurar permisos de lectura para el servidor web
+	_ = os.Chmod(dst, 0644)
 
 	backendURL := strings.TrimRight(h.cfg.BackendURL, "/")
 	fileURL := fmt.Sprintf("/static/uploads/%s", filename)
@@ -254,5 +257,7 @@ func (h *ProductHandler) UploadImage(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"url": fileURL,
+		"filename": filename,
+		"size": file.Size,
 	})
 }

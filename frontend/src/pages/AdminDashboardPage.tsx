@@ -260,6 +260,10 @@ export default function AdminDashboardPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
+    // Vista previa instantánea
+    const localPreview = URL.createObjectURL(file)
+    setProductForm(prev => ({ ...prev, image_url: localPreview }))
+
     setUploading(true)
     const formData = new FormData()
     formData.append('file', file)
@@ -290,6 +294,9 @@ export default function AdminDashboardPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
+    const localPreview = URL.createObjectURL(file)
+    setStoreSettings(prev => ({ ...prev, logo_url: localPreview }))
+
     setLogoUploading(true)
     const formData = new FormData()
     formData.append('file', file)
@@ -319,6 +326,9 @@ export default function AdminDashboardPage() {
   const handleHeroUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+
+    const localPreview = URL.createObjectURL(file)
+    setStoreSettings(prev => ({ ...prev, hero_image_url: localPreview }))
 
     setHeroUploading(true)
     const formData = new FormData()
