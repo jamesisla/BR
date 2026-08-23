@@ -79,22 +79,41 @@ func main() {
 	}
 	_ = os.MkdirAll(absUploadDir, 0777)
 
-	// Handler explícito para servir archivos de subida desde disco con headers y protección
+	// Handler explícito para servir archivos de subida desde disco con lectura binaria directa y headers MIME
 	serveUploadedFile := func(c *gin.Context) {
 		paramPath := c.Param("filepath")
-		cleanPath := filepath.Clean("/" + paramPath)
+		cleanPath := strings.TrimPrefix(paramPath, "/")
 		diskPath := filepath.Join(absUploadDir, cleanPath)
 
-		if info, err := os.Stat(diskPath); err == nil && !info.IsDir() {
-			log.Printf("🖼️  [IMAGE SERVED] 200 OK: %s (%d bytes)", cleanPath, info.Size())
-			c.Header("Cache-Control", "public, max-age=86400")
-			c.Header("Access-Control-Allow-Origin", "*")
-			c.File(diskPath)
+		data, err := os.ReadFile(diskPath)
+		if err != nil {
+			log.Printf("⚠️  [IMAGE NOT FOUND] 404: %s (Ruta buscada: %s, Error: %v)", cleanPath, diskPath, err)
+			c.JSON(http.StatusNotFound, gin.H{"detail": "Imagen no encontrada en el servidor"})
 			return
 		}
 
-		log.Printf("⚠️  [IMAGE NOT FOUND] 404: %s (Buscado en disco: %s)", cleanPath, diskPath)
-		c.JSON(http.StatusNotFound, gin.H{"detail": "Imagen no encontrada en el servidor"})
+		// Determinar MIME type exacto
+		ext := strings.ToLower(filepath.Ext(cleanPath))
+		mimeType := "image/jpeg"
+		switch ext {
+		case ".png":
+			mimeType = "image/png"
+		case ".jpg", ".jpeg":
+			mimeType = "image/jpeg"
+		case ".webp":
+			mimeType = "image/webp"
+		case ".gif":
+			mimeType = "image/gif"
+		case ".svg":
+			mimeType = "image/svg+xml"
+		default:
+			mimeType = http.DetectContentType(data)
+		}
+
+		log.Printf("🖼️  [IMAGE SERVED] 200 OK: %s (%d bytes, Content-Type: %s)", cleanPath, len(data), mimeType)
+		c.Header("Cache-Control", "public, max-age=86400")
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Data(http.StatusOK, mimeType, data)
 	}
 
 	r.GET("/static/uploads/*filepath", serveUploadedFile)
@@ -362,35 +381,12 @@ func setupEmbeddedSPA(r *gin.Engine, absUploadDir string) {
 	r.NoRoute(func(c *gin.Context) {
 		reqPath := strings.TrimPrefix(c.Request.URL.Path, "/")
 
-		// 1. Si es una ruta de subidas en disco, servir archivo del disco directamente
-		if strings.HasPrefix(reqPath, "static/uploads/") {
-			fileName := strings.TrimPrefix(reqPath, "static/uploads/")
-			diskFile := filepath.Join(absUploadDir, fileName)
-			if _, err := os.Stat(diskFile); err == nil {
-				c.Header("Cache-Control", "public, max-age=86400")
-				c.Header("Access-Control-Allow-Origin", "*")
-				c.File(diskFile)
-				return
-			}
-			c.JSON(http.StatusNotFound, gin.H{"detail": "Imagen no encontrada"})
-			return
-		}
-		if strings.HasPrefix(reqPath, "uploads/") {
-			fileName := strings.TrimPrefix(reqPath, "uploads/")
-			diskFile := filepath.Join(absUploadDir, fileName)
-			if _, err := os.Stat(diskFile); err == nil {
-				c.Header("Cache-Control", "public, max-age=86400")
-				c.Header("Access-Control-Allow-Origin", "*")
-				c.File(diskFile)
-				return
-			}
-			c.JSON(http.StatusNotFound, gin.H{"detail": "Imagen no encontrada"})
-			return
-		}
-
-		// 2. Si es una ruta de API inexistente, responder 404 JSON
-		if strings.HasPrefix(c.Request.URL.Path, "/api/") || c.Request.URL.Path == "/api" {
-			c.JSON(http.StatusNotFound, gin.H{"detail": "Endpoint de API no encontrado"})
+		// 1. Si es una ruta de subidas o API no encontrada, responder 404 (NUNCA index.html)
+		if strings.HasPrefix(c.Request.URL.Path, "/static/uploads/") ||
+			strings.HasPrefix(c.Request.URL.Path, "/uploads/") ||
+			strings.HasPrefix(c.Request.URL.Path, "/api/") ||
+			c.Request.URL.Path == "/api" {
+			c.JSON(http.StatusNotFound, gin.H{"detail": "Recurso no encontrado"})
 			return
 		}
 

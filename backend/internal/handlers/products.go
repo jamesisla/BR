@@ -114,10 +114,12 @@ func (h *ProductHandler) CreateProduct(c *gin.Context) {
 	}
 
 	if err := h.db.Create(&product).Error; err != nil {
+		log.Printf("❌ [DB ERROR] Error al crear producto: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Error al guardar el producto en la base de datos"})
 		return
 	}
 
+	log.Printf("📝 [PRODUCT CREATED] ID: %s | Nombre: %s | ImageURL: %s", product.ID, product.Name, product.ImageURL)
 	c.JSON(http.StatusOK, product)
 }
 
@@ -151,10 +153,12 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	}
 
 	if err := h.db.Save(&product).Error; err != nil {
+		log.Printf("❌ [DB ERROR] Error al actualizar producto %s: %v", productID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Error al actualizar producto"})
 		return
 	}
 
+	log.Printf("📝 [PRODUCT UPDATED] ID: %s | Nombre: %s | ImageURL: %s", product.ID, product.Name, product.ImageURL)
 	c.JSON(http.StatusOK, product)
 }
 
