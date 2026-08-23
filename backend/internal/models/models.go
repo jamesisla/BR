@@ -111,6 +111,168 @@ type StoreSettings struct {
 	AnnouncementBar    string `gorm:"type:varchar(255);default:'🚚 ¡Envíos a todo Chile! Paga fácil y seguro con Transferencia Bancaria'" json:"announcement_bar"`
 	AnnouncementActive bool   `gorm:"type:boolean;default:true" json:"announcement_active"`
 	Currency           string `gorm:"type:varchar(10);default:'CLP'" json:"currency"`
+	AnalyticsEnabled   bool   `gorm:"type:boolean;default:true" json:"analytics_enabled"`
+	IgnoreAdminVisits  bool   `gorm:"type:boolean;default:true" json:"ignore_admin_visits"`
+}
+
+// Visit stores rich visitor & connection information
+type Visit struct {
+	ID                  string    `gorm:"primaryKey;type:varchar(36)" json:"id"`
+	VisitorID           string    `gorm:"type:varchar(64);index" json:"visitor_id"`
+	SessionID           string    `gorm:"type:varchar(64);index" json:"session_id"`
+	IP                  string    `gorm:"type:varchar(64);index" json:"ip"`
+	
+	// Geolocation & Network
+	CountryCode         string    `gorm:"type:varchar(10);index" json:"country_code"`
+	CountryName         string    `gorm:"type:varchar(100)" json:"country_name"`
+	City                string    `gorm:"type:varchar(100);index" json:"city"`
+	Region              string    `gorm:"type:varchar(100)" json:"region"`
+	ISP                 string    `gorm:"type:varchar(200)" json:"isp"`
+	
+	// Navigation & Page
+	Path                string    `gorm:"type:varchar(500);index" json:"path"`
+	PageURL             string    `gorm:"type:text" json:"page_url"`
+	PageTitle           string    `gorm:"type:varchar(255)" json:"page_title"`
+	Referrer            string    `gorm:"type:varchar(500)" json:"referrer"`
+	ReferrerDomain      string    `gorm:"type:varchar(150);index" json:"referrer_domain"`
+	
+	// Marketing UTM
+	UTMSource           string    `gorm:"type:varchar(100);index" json:"utm_source"`
+	UTMMedium           string    `gorm:"type:varchar(100)" json:"utm_medium"`
+	UTMCampaign         string    `gorm:"type:varchar(100)" json:"utm_campaign"`
+	UTMTerm             string    `gorm:"type:varchar(100)" json:"utm_term"`
+	UTMContent          string    `gorm:"type:varchar(100)" json:"utm_content"`
+	
+	// Device & Browser
+	DeviceType          string    `gorm:"type:varchar(50);index" json:"device_type"` // desktop, mobile, tablet, bot
+	Browser             string    `gorm:"type:varchar(100);index" json:"browser"`
+	BrowserVersion      string    `gorm:"type:varchar(50)" json:"browser_version"`
+	OS                  string    `gorm:"type:varchar(100);index" json:"os"`
+	OSVersion           string    `gorm:"type:varchar(50)" json:"os_version"`
+	Platform            string    `gorm:"type:varchar(100)" json:"platform"`
+	UserAgent           string    `gorm:"type:text" json:"user_agent"`
+	
+	// Hardware & Screen
+	ScreenResolution    string    `gorm:"type:varchar(50)" json:"screen_resolution"`
+	ViewportSize        string    `gorm:"type:varchar(50)" json:"viewport_size"`
+	ColorDepth          int       `gorm:"type:integer" json:"color_depth"`
+	PixelRatio          float64   `gorm:"type:decimal(4,2)" json:"pixel_ratio"`
+	HardwareConcurrency int       `gorm:"type:integer" json:"hardware_concurrency"`
+	DeviceMemory        float64   `gorm:"type:decimal(4,1)" json:"device_memory"`
+	TouchPoints         int       `gorm:"type:integer" json:"touch_points"`
+	
+	// Connection & Environment
+	NetworkType         string    `gorm:"type:varchar(50)" json:"network_type"`
+	Downlink            float64   `gorm:"type:decimal(6,2)" json:"downlink"`
+	RTT                 int       `gorm:"type:integer" json:"rtt"`
+	Language            string    `gorm:"type:varchar(50)" json:"language"`
+	Languages           string    `gorm:"type:varchar(200)" json:"languages"`
+	Timezone            string    `gorm:"type:varchar(100)" json:"timezone"`
+	TimezoneOffset      int       `gorm:"type:integer" json:"timezone_offset"`
+	IsSecure            bool      `gorm:"type:boolean" json:"is_secure"`
+	IsAdmin             bool      `gorm:"type:boolean;default:false;index" json:"is_admin"`
+	
+	DurationSeconds     int       `gorm:"type:integer;default:0" json:"duration_seconds"`
+	CreatedAt           time.Time `gorm:"autoCreateTime;index" json:"created_at"`
+}
+
+// TrackVisitRequest represents incoming visit tracking data from client
+type TrackVisitRequest struct {
+	VisitorID           string  `json:"visitor_id"`
+	SessionID           string  `json:"session_id"`
+	Path                string  `json:"path"`
+	PageURL             string  `json:"page_url"`
+	PageTitle           string  `json:"page_title"`
+	Referrer            string  `json:"referrer"`
+	UTMSource           string  `json:"utm_source"`
+	UTMMedium           string  `json:"utm_medium"`
+	UTMCampaign         string  `json:"utm_campaign"`
+	UTMTerm             string  `json:"utm_term"`
+	UTMContent          string  `json:"utm_content"`
+	ScreenResolution    string  `json:"screen_resolution"`
+	ViewportSize        string  `json:"viewport_size"`
+	ColorDepth          int     `json:"color_depth"`
+	PixelRatio          float64 `json:"pixel_ratio"`
+	HardwareConcurrency int     `json:"hardware_concurrency"`
+	DeviceMemory        float64 `json:"device_memory"`
+	TouchPoints         int     `json:"touch_points"`
+	NetworkType         string  `json:"network_type"`
+	Downlink            float64 `json:"downlink"`
+	RTT                 int     `json:"rtt"`
+	Language            string  `json:"language"`
+	Languages           string  `json:"languages"`
+	Timezone            string  `json:"timezone"`
+	TimezoneOffset      int     `json:"timezone_offset"`
+	Platform            string  `json:"platform"`
+	IsAdmin             bool    `json:"is_admin"`
+	DurationSeconds     int     `json:"duration_seconds"`
+}
+
+// AnalyticsSummary represents high-level metrics and breakdowns
+type AnalyticsSummary struct {
+	TotalVisits        int64                    `json:"total_visits"`
+	UniqueVisitors     int64                    `json:"unique_visitors"`
+	TodayVisits        int64                    `json:"today_visits"`
+	TodayVisitors      int64                    `json:"today_visitors"`
+	MobilePercentage   float64                  `json:"mobile_percentage"`
+	DesktopPercentage  float64                  `json:"desktop_percentage"`
+	TabletPercentage   float64                  `json:"tablet_percentage"`
+	AvgDurationSeconds int                      `json:"avg_duration_seconds"`
+	AnalyticsEnabled   bool                     `json:"analytics_enabled"`
+	Trends             []AnalyticsTrendItem     `json:"trends"`
+	TopDevices         []AnalyticsBreakdownItem `json:"top_devices"`
+	TopBrowsers        []AnalyticsBreakdownItem `json:"top_browsers"`
+	TopOS              []AnalyticsBreakdownItem `json:"top_os"`
+	TopPages           []AnalyticsBreakdownItem `json:"top_pages"`
+	TopReferrers       []AnalyticsBreakdownItem `json:"top_referrers"`
+	TopCountries       []AnalyticsBreakdownItem `json:"top_countries"`
+	TopCities          []AnalyticsBreakdownItem `json:"top_cities"`
+	TopCampaigns       []AnalyticsCampaignItem  `json:"top_campaigns"`
+}
+
+// AnalyticsTrendItem represents a point in the time-series chart
+type AnalyticsTrendItem struct {
+	Date           string `json:"date"`
+	Visits         int64  `json:"visits"`
+	UniqueVisitors int64  `json:"unique_visitors"`
+	Mobile         int64  `json:"mobile"`
+	Desktop        int64  `json:"desktop"`
+}
+
+// AnalyticsBreakdownItem represents categorical breakdown (device, browser, page, country, etc.)
+type AnalyticsBreakdownItem struct {
+	Name       string  `json:"name"`
+	Code       string  `json:"code,omitempty"`
+	Count      int64   `json:"count"`
+	Percentage float64 `json:"percentage"`
+}
+
+// AnalyticsCampaignItem represents UTM campaign stats
+type AnalyticsCampaignItem struct {
+	Source   string `json:"source"`
+	Medium   string `json:"medium"`
+	Campaign string `json:"campaign"`
+	Count    int64  `json:"count"`
+}
+
+// VisitsListResponse represents paginated visit items
+type VisitsListResponse struct {
+	Items      []Visit `json:"items"`
+	Total      int64   `json:"total"`
+	Page       int     `json:"page"`
+	Limit      int     `json:"limit"`
+	TotalPages int     `json:"total_pages"`
+}
+
+// ToggleAnalyticsRequest represents request to enable/disable analytics
+type ToggleAnalyticsRequest struct {
+	Enabled           *bool `json:"enabled"`
+	IgnoreAdminVisits *bool `json:"ignore_admin_visits"`
+}
+
+// PurgeVisitsRequest represents request to delete old visit data
+type PurgeVisitsRequest struct {
+	Period string `json:"period" binding:"required"` // "all", "older_than_30d", "older_than_90d"
 }
 
 // LoginRequest represents admin login credentials

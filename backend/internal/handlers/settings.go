@@ -26,14 +26,24 @@ func (h *SettingsHandler) GetSettings(c *gin.Context) {
 		if result.Error == gorm.ErrRecordNotFound {
 			// Initialize default
 			settings = models.StoreSettings{
-				Name:           "TIENDA ARTISAN",
-				LogoURL:        "",
-				PrimaryColor:   "#3d2b1f",
-				SecondaryColor: "#a67c52",
-				FooterText:     "© 2026 Tienda Artisan. Crafted for purity.",
-				HeroTitle:      "El Arte de la Pureza",
-				HeroSubtitle:   "Descubre nuestra selección artesanal única.",
-				HeroImageURL:   "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=2000&auto=format&fit=crop",
+				Name:               "TIENDA DEMO PYME",
+				LogoURL:            "",
+				PrimaryColor:       "#2d1b0e",
+				SecondaryColor:     "#9c6644",
+				FooterText:         "© 2026 Tienda Demo. Ventas directas por WhatsApp.",
+				HeroTitle:          "Emprende con Estilo",
+				HeroSubtitle:       "Catálogo digital para PYMEs. Haz tu pedido directo por WhatsApp con transferencia.",
+				HeroImageURL:       "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=2000&auto=format&fit=crop",
+				WhatsAppNumber:     "+56912345678",
+				WhatsAppMessage:    "¡Hola! Me gustaría consultar o pedir:",
+				BankDetails:        "BancoEstado | CuentaRUT: 12.345.678-9 | Titular: Tienda PYME | Correo: pagos@tienda.cl",
+				ShippingInfo:       "Envíos a todo Chile vía Starken / Chilexpress o retiro acordado por WhatsApp.",
+				InstagramURL:       "",
+				AnnouncementBar:    "🚚 ¡Envíos a todo Chile! Paga fácil y seguro con Transferencia Bancaria",
+				AnnouncementActive: true,
+				Currency:           "CLP",
+				AnalyticsEnabled:   true,
+				IgnoreAdminVisits:  true,
 			}
 			h.db.Create(&settings)
 		} else {
@@ -45,7 +55,7 @@ func (h *SettingsHandler) GetSettings(c *gin.Context) {
 	c.JSON(http.StatusOK, settings)
 }
 
-// UpdateSettings saves updated branding and hero configuration
+// UpdateSettings saves updated branding, contact and analytics configuration
 func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
 	var input models.StoreSettings
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -74,6 +84,16 @@ func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
 		settings.HeroTitle = input.HeroTitle
 		settings.HeroSubtitle = input.HeroSubtitle
 		settings.HeroImageURL = input.HeroImageURL
+		settings.WhatsAppNumber = input.WhatsAppNumber
+		settings.WhatsAppMessage = input.WhatsAppMessage
+		settings.BankDetails = input.BankDetails
+		settings.ShippingInfo = input.ShippingInfo
+		settings.InstagramURL = input.InstagramURL
+		settings.AnnouncementBar = input.AnnouncementBar
+		settings.AnnouncementActive = input.AnnouncementActive
+		settings.Currency = input.Currency
+		settings.AnalyticsEnabled = input.AnalyticsEnabled
+		settings.IgnoreAdminVisits = input.IgnoreAdminVisits
 
 		if err := h.db.Save(&settings).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"detail": "Error al actualizar configuración"})

@@ -50,6 +50,7 @@ func main() {
 	orderHandler := handlers.NewOrderHandler(db)
 	paymentHandler := handlers.NewPaymentHandler(db, mpService)
 	categoryHandler := handlers.NewCategoryHandler(db, cfg)
+	analyticsHandler := handlers.NewAnalyticsHandler(db)
 
 	// 4. Create Router
 	r := gin.New()
@@ -230,6 +231,18 @@ func main() {
 		{
 			paymentGroup.POST("/create-preference", paymentHandler.CreatePreference)
 			paymentGroup.POST("/webhook", paymentHandler.Webhook)
+		}
+
+		// Analytics & Visitors Tracking
+		analyticsGroup := api.Group("/analytics")
+		{
+			analyticsGroup.POST("/track", analyticsHandler.Track)
+			analyticsGroup.GET("/summary", analyticsHandler.GetSummary)
+			analyticsGroup.GET("/visits", analyticsHandler.ListVisits)
+			analyticsGroup.GET("/visits/:id", analyticsHandler.GetVisit)
+			analyticsGroup.POST("/toggle", analyticsHandler.ToggleTracking)
+			analyticsGroup.POST("/purge", analyticsHandler.PurgeVisits)
+			analyticsGroup.GET("/export", analyticsHandler.ExportCSV)
 		}
 	}
 

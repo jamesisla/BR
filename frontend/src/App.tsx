@@ -5,6 +5,7 @@ import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import CartDrawer from './components/CartDrawer'
 import SearchOverlay from './components/SearchOverlay'
+import VisitorTracker from './components/VisitorTracker'
 
 import HomePage from './pages/HomePage'
 import ProductDetailPage from './pages/ProductDetailPage'
@@ -21,6 +22,7 @@ function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex flex-col min-h-screen">
+      <VisitorTracker />
       {!isAdmin && <Navbar />}
       <main className="flex-1">{children}</main>
       {!isAdmin && <Footer />}

@@ -75,15 +75,17 @@ func InitDB(databaseURL string) (*gorm.DB, error) {
 		&models.Order{},
 		&models.OrderItem{},
 		&models.StoreSettings{},
+		&models.Visit{},
 	); err != nil {
 		log.Printf("Aviso: Esquema anterior incompatible detectado (%v). Reconstruyendo tablas limpiamente...", err)
-		_ = db.Migrator().DropTable(&models.OrderItem{}, &models.Order{}, &models.Product{}, &models.Category{}, &models.StoreSettings{})
+		_ = db.Migrator().DropTable(&models.OrderItem{}, &models.Order{}, &models.Product{}, &models.Category{}, &models.StoreSettings{}, &models.Visit{})
 		if err2 := db.AutoMigrate(
 			&models.Category{},
 			&models.Product{},
 			&models.Order{},
 			&models.OrderItem{},
 			&models.StoreSettings{},
+			&models.Visit{},
 		); err2 != nil {
 			return nil, fmt.Errorf("error en AutoMigrate: %w", err2)
 		}
@@ -96,6 +98,7 @@ func InitDB(databaseURL string) (*gorm.DB, error) {
 	_ = db.Exec("UPDATE store_settings SET hero_image_url = REPLACE(hero_image_url, 'http://localhost', '') WHERE hero_image_url LIKE '%localhost%'").Error
 	_ = db.Exec("UPDATE store_settings SET logo_url = REPLACE(logo_url, 'http://localhost:8000', '') WHERE logo_url LIKE '%localhost:8000%'").Error
 	_ = db.Exec("UPDATE store_settings SET logo_url = REPLACE(logo_url, 'http://localhost', '') WHERE logo_url LIKE '%localhost%'").Error
+	_ = db.Exec("UPDATE store_settings SET analytics_enabled = true, ignore_admin_visits = true WHERE analytics_enabled IS NULL").Error
 
 	// Seed initial data if tables are empty
 	seedInitialData(db)
@@ -132,9 +135,11 @@ func seedInitialData(db *gorm.DB) {
 			HeroTitle:      "Emprende con Estilo",
 			HeroSubtitle:   "Catálogo digital para PYMEs. Haz tu pedido directo por WhatsApp con transferencia.",
 			HeroImageURL:   "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=2000&auto=format&fit=crop",
-			WhatsAppNumber: "+56912345678",
-			BankDetails:    "BancoEstado | CuentaRUT: 12.345.678-9 | Titular: Tienda PYME | Correo: pagos@tienda.cl",
-			Currency:       "CLP",
+			WhatsAppNumber:    "+56912345678",
+			BankDetails:       "BancoEstado | CuentaRUT: 12.345.678-9 | Titular: Tienda PYME | Correo: pagos@tienda.cl",
+			Currency:          "CLP",
+			AnalyticsEnabled:  true,
+			IgnoreAdminVisits: true,
 		}
 		db.Create(&defaultSettings)
 	}

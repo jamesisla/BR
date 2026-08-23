@@ -24,10 +24,14 @@ import {
   Instagram,
   Truck,
   CheckCircle,
-  Sparkles
+  Sparkles,
+  BarChart3,
+  Activity,
+  Shield
 } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCart, formatCLP, formatImageUrl } from '../context/CartContext'
+import AdminAnalyticsTab from '../components/AdminAnalyticsTab'
 
 // Compresor y Optimizador Retina/4K para Smartphones y Notebooks
 async function compressImage(file: File, maxWidth = 1600, maxHeight = 1600, quality = 0.88): Promise<File> {
@@ -98,7 +102,7 @@ export default function AdminDashboardPage() {
   const navigate = useNavigate()
   const { reloadConfig, reloadCategories } = useCart()
   
-  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'categories' | 'settings'>('orders') 
+  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'categories' | 'analytics' | 'settings'>('orders') 
   const [uploading, setUploading] = useState(false)
   const [logoUploading, setLogoUploading] = useState(false)
   const [heroUploading, setHeroUploading] = useState(false)
@@ -142,7 +146,9 @@ export default function AdminDashboardPage() {
     instagram_url: '',
     announcement_bar: '🚚 ¡Envíos a todo Chile! Paga fácil y seguro con Transferencia Bancaria',
     announcement_active: true,
-    currency: 'CLP'
+    currency: 'CLP',
+    analytics_enabled: true,
+    ignore_admin_visits: true
   })
 
   const [productForm, setProductForm] = useState({
@@ -194,7 +200,9 @@ export default function AdminDashboardPage() {
           instagram_url: data.instagram_url || '',
           announcement_bar: data.announcement_bar || '🚚 ¡Envíos a todo Chile! Paga fácil y seguro con Transferencia Bancaria',
           announcement_active: data.announcement_active !== false,
-          currency: data.currency || 'CLP'
+          currency: data.currency || 'CLP',
+          analytics_enabled: data.analytics_enabled !== false,
+          ignore_admin_visits: data.ignore_admin_visits !== false
         })
         setLogoPreview(data.logo_url || '')
         setHeroPreview(data.hero_image_url || '')
@@ -623,6 +631,13 @@ export default function AdminDashboardPage() {
             <span>Categorías</span>
           </button>
           <button 
+            onClick={() => setActiveTab('analytics')}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-xs tracking-wider transition-all ${activeTab === 'analytics' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}
+          >
+            <BarChart3 size={18} />
+            <span>Visitas & Métricas</span>
+          </button>
+          <button 
             onClick={() => setActiveTab('settings')}
             className={`flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-xs tracking-wider transition-all ${activeTab === 'settings' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}
           >
@@ -652,7 +667,8 @@ export default function AdminDashboardPage() {
             <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 capitalize">
               {activeTab === 'orders' ? 'Gestión de Pedidos' : 
                activeTab === 'products' ? 'Catálogo de Productos' : 
-               activeTab === 'categories' ? 'Gestión de Categorías' : 'Personalización de Tienda'}
+               activeTab === 'categories' ? 'Gestión de Categorías' : 
+               activeTab === 'analytics' ? 'Analítica & Visitas al Sitio' : 'Personalización de Tienda'}
             </h1>
           </div>
           
@@ -816,10 +832,45 @@ export default function AdminDashboardPage() {
                 })}
               </div>
             </div>
+          ) : activeTab === 'analytics' ? (
+            /* ANALYTICS & VISITS TAB */
+            <AdminAnalyticsTab onSettingsUpdated={fetchSettings} />
           ) : activeTab === 'settings' ? (
             /* SETTINGS TAB */
             <div className="max-w-2xl mx-auto py-2">
                 <form onSubmit={handleSettingsSubmit} className="space-y-6">
+                  {/* Analytics & Visitor Telemetry Options */}
+                  <div className="p-5 bg-purple-50/60 border border-purple-100 rounded-2xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-purple-900 flex items-center gap-2">
+                        <BarChart3 size={18} className="text-purple-600" /> Analítica y Métricas de Visitas
+                      </h3>
+                      <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-purple-950">
+                        <input 
+                          type="checkbox" 
+                          checked={storeSettings.analytics_enabled}
+                          onChange={(e) => setStoreSettings({...storeSettings, analytics_enabled: e.target.checked})}
+                          className="rounded border-purple-300 text-purple-900 focus:ring-0 w-4 h-4"
+                        />
+                        <span>{storeSettings.analytics_enabled ? 'Habilitado' : 'Deshabilitado'}</span>
+                      </label>
+                    </div>
+                    <p className="text-xs text-purple-800/80">
+                      Guarda información estadística y técnica de clientes (dispositivos, ubicaciones, páginas más visitadas y fuentes de tráfico).
+                    </p>
+                    <div className="pt-2 border-t border-purple-100">
+                      <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-purple-900">
+                        <input 
+                          type="checkbox" 
+                          checked={storeSettings.ignore_admin_visits}
+                          onChange={(e) => setStoreSettings({...storeSettings, ignore_admin_visits: e.target.checked})}
+                          className="rounded border-purple-300 text-purple-900 focus:ring-0 w-4 h-4"
+                        />
+                        <span>Ignorar mis visitas como administrador (para no alterar estadísticas)</span>
+                      </label>
+                    </div>
+                  </div>
+
                   {/* Announcement Bar */}
                   <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl">
                      <div className="flex items-center justify-between mb-3">
@@ -1107,44 +1158,44 @@ export default function AdminDashboardPage() {
       </main>
 
       {/* Mobile Bottom Navigation Bar */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-2 z-40 flex justify-around items-center shadow-lg">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 py-2 px-1 z-40 flex justify-around items-center shadow-lg">
         <button 
           onClick={() => setActiveTab('orders')}
-          className={`flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] font-bold ${activeTab === 'orders' ? 'text-slate-900' : 'text-slate-400'}`}
+          className={`flex flex-col items-center gap-0.5 p-1 rounded-xl text-[9px] font-bold ${activeTab === 'orders' ? 'text-slate-900' : 'text-slate-400'}`}
         >
-          <ShoppingBag size={20} />
+          <ShoppingBag size={18} />
           <span>Pedidos</span>
         </button>
 
         <button 
           onClick={() => setActiveTab('products')}
-          className={`flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] font-bold ${activeTab === 'products' ? 'text-slate-900' : 'text-slate-400'}`}
+          className={`flex flex-col items-center gap-0.5 p-1 rounded-xl text-[9px] font-bold ${activeTab === 'products' ? 'text-slate-900' : 'text-slate-400'}`}
         >
-          <Package size={20} />
+          <Package size={18} />
           <span>Productos</span>
         </button>
 
         <button 
-          onClick={() => (activeTab === 'categories' ? openCategoryModal() : openProductModal())}
-          className="w-12 h-12 bg-slate-900 text-white rounded-full flex items-center justify-center shadow-lg -mt-5"
-          title="Añadir"
+          onClick={() => setActiveTab('analytics')}
+          className={`flex flex-col items-center gap-0.5 p-1 rounded-xl text-[9px] font-bold ${activeTab === 'analytics' ? 'text-slate-900' : 'text-slate-400'}`}
         >
-          <Plus size={24} />
+          <BarChart3 size={18} />
+          <span>Visitas</span>
         </button>
 
         <button 
           onClick={() => setActiveTab('categories')}
-          className={`flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] font-bold ${activeTab === 'categories' ? 'text-slate-900' : 'text-slate-400'}`}
+          className={`flex flex-col items-center gap-0.5 p-1 rounded-xl text-[9px] font-bold ${activeTab === 'categories' ? 'text-slate-900' : 'text-slate-400'}`}
         >
-          <Layers size={20} />
+          <Layers size={18} />
           <span>Categorías</span>
         </button>
 
         <button 
           onClick={() => setActiveTab('settings')}
-          className={`flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] font-bold ${activeTab === 'settings' ? 'text-slate-900' : 'text-slate-400'}`}
+          className={`flex flex-col items-center gap-0.5 p-1 rounded-xl text-[9px] font-bold ${activeTab === 'settings' ? 'text-slate-900' : 'text-slate-400'}`}
         >
-          <SettingsIcon size={20} />
+          <SettingsIcon size={18} />
           <span>Ajustes</span>
         </button>
       </div>
