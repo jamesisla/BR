@@ -4,7 +4,28 @@ import (
 	"time"
 )
 
-// Product represents an item for sale in the generic store
+// Category represents a product category with name, slug, icon and order
+type Category struct {
+	ID        string    `gorm:"primaryKey;type:varchar(36)" json:"id"`
+	Name      string    `gorm:"type:varchar(100);not null" json:"name"`
+	Slug      string    `gorm:"type:varchar(100);uniqueIndex;not null" json:"slug"`
+	Icon      string    `gorm:"type:varchar(50);default:'tag'" json:"icon"`
+	Order     int       `gorm:"type:integer;default:0" json:"order"`
+	IsActive  bool      `gorm:"type:boolean;default:true" json:"is_active"`
+	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+}
+
+// CategoryCreate represents payload to create or update a category
+type CategoryCreate struct {
+	Name     string `json:"name" binding:"required"`
+	Slug     string `json:"slug" binding:"required"`
+	Icon     string `json:"icon"`
+	Order    int    `json:"order"`
+	IsActive *bool  `json:"is_active"`
+}
+
+// Product represents an item for sale in the store
 type Product struct {
 	ID          string    `gorm:"primaryKey;type:varchar(36)" json:"id"`
 	Name        string    `gorm:"type:varchar(255);not null" json:"name"`
@@ -21,14 +42,14 @@ type Product struct {
 
 // ProductCreate represents the payload to create or update a product
 type ProductCreate struct {
-	Name        string   `json:"name" binding:"required"`
-	Slug        string   `json:"slug" binding:"required"`
-	Description string   `json:"description"`
-	Category    string   `json:"category"`
-	BasePrice   float64  `json:"base_price" binding:"required"`
-	Stock       int      `json:"stock"`
-	ImageURL    string   `json:"image_url"`
-	IsActive    *bool    `json:"is_active"`
+	Name        string  `json:"name" binding:"required"`
+	Slug        string  `json:"slug" binding:"required"`
+	Description string  `json:"description"`
+	Category    string  `json:"category"`
+	BasePrice   float64 `json:"base_price" binding:"required"`
+	Stock       int     `json:"stock"`
+	ImageURL    string  `json:"image_url"`
+	IsActive    *bool   `json:"is_active"`
 }
 
 // Order represents a customer purchase
@@ -71,20 +92,25 @@ type OrderItemCreate struct {
 	PriceAtPurchase float64 `json:"price_at_purchase" binding:"required"`
 }
 
-// StoreSettings represents store branding, WhatsApp orders and payment info
+// StoreSettings represents store branding, announcements, WhatsApp orders and payment info
 type StoreSettings struct {
-	ID             uint   `gorm:"primaryKey" json:"id"`
-	Name           string `gorm:"type:varchar(255);default:'TIENDA ARTISAN'" json:"name"`
-	LogoURL        string `gorm:"type:varchar(500);default:''" json:"logo_url"`
-	PrimaryColor   string `gorm:"type:varchar(50);default:'#2d1b0e'" json:"primary_color"`
-	SecondaryColor string `gorm:"type:varchar(50);default:'#9c6644'" json:"secondary_color"`
-	FooterText     string `gorm:"type:text;default:'© 2026 Tienda Artisan. Todos los derechos reservados.'" json:"footer_text"`
-	HeroTitle      string `gorm:"type:varchar(255);default:'El Arte de la Calidad'" json:"hero_title"`
-	HeroSubtitle   string `gorm:"type:varchar(500);default:'Descubre nuestra selección exclusiva. Pedidos directos por WhatsApp.'" json:"hero_subtitle"`
-	HeroImageURL   string `gorm:"type:varchar(500);default:''" json:"hero_image_url"`
-	WhatsAppNumber string `gorm:"type:varchar(50);default:'+56912345678'" json:"whatsapp_number"`
-	BankDetails    string `gorm:"type:text;default:'Banco Estado - Cuenta RUT: 12.345.678-9 - email@ejemplo.cl'" json:"bank_details"`
-	Currency       string `gorm:"type:varchar(10);default:'CLP'" json:"currency"`
+	ID                 uint   `gorm:"primaryKey" json:"id"`
+	Name               string `gorm:"type:varchar(255);default:'TIENDA PYME'" json:"name"`
+	LogoURL            string `gorm:"type:varchar(500);default:''" json:"logo_url"`
+	PrimaryColor       string `gorm:"type:varchar(50);default:'#2d1b0e'" json:"primary_color"`
+	SecondaryColor     string `gorm:"type:varchar(50);default:'#9c6644'" json:"secondary_color"`
+	FooterText         string `gorm:"type:text;default:'© 2026 Tienda PYME. Ventas directas por WhatsApp.'" json:"footer_text"`
+	HeroTitle          string `gorm:"type:varchar(255);default:'Emprende con Estilo'" json:"hero_title"`
+	HeroSubtitle       string `gorm:"type:varchar(500);default:'Descubre nuestra selección exclusiva. Haz tus pedidos de forma rápida por WhatsApp.'" json:"hero_subtitle"`
+	HeroImageURL       string `gorm:"type:varchar(500);default:''" json:"hero_image_url"`
+	WhatsAppNumber     string `gorm:"type:varchar(50);default:'+56912345678'" json:"whatsapp_number"`
+	WhatsAppMessage    string `gorm:"type:text;default:'¡Hola! Me gustaría consultar o pedir:'" json:"whatsapp_message"`
+	BankDetails        string `gorm:"type:text;default:'BancoEstado | CuentaRUT: 12.345.678-9 | Titular: Mi Tienda | Correo: pagos@tienda.cl'" json:"bank_details"`
+	ShippingInfo       string `gorm:"type:text;default:'Envíos a todo Chile vía Starken / Chilexpress o retiro acordado por WhatsApp.'" json:"shipping_info"`
+	InstagramURL       string `gorm:"type:varchar(255);default:''" json:"instagram_url"`
+	AnnouncementBar    string `gorm:"type:varchar(255);default:'🚚 ¡Envíos a todo Chile! Paga fácil y seguro con Transferencia Bancaria'" json:"announcement_bar"`
+	AnnouncementActive bool   `gorm:"type:boolean;default:true" json:"announcement_active"`
+	Currency           string `gorm:"type:varchar(10);default:'CLP'" json:"currency"`
 }
 
 // LoginRequest represents admin login credentials

@@ -8,6 +8,15 @@ export interface CartItem {
   image: string
 }
 
+export interface CategoryItem {
+  id: string
+  name: string
+  slug: string
+  icon?: string
+  order?: number
+  is_active?: boolean
+}
+
 export interface StoreConfig {
   name: string
   primary_color: string
@@ -18,7 +27,12 @@ export interface StoreConfig {
   hero_subtitle: string
   hero_image_url?: string
   whatsapp_number: string
+  whatsapp_message?: string
   bank_details: string
+  shipping_info?: string
+  instagram_url?: string
+  announcement_bar?: string
+  announcement_active?: boolean
   currency: string
 }
 
@@ -56,7 +70,9 @@ interface CartContextType {
   isSearchOpen: boolean
   setIsSearchOpen: (isOpen: boolean) => void
   config: StoreConfig | null
+  categories: CategoryItem[]
   reloadConfig: () => void
+  reloadCategories: () => void
   getWhatsAppOrderURL: (deliveryType: 'envio' | 'retiro', customerInfo?: { name: string, address: string, phone?: string }) => string
 }
 
@@ -67,6 +83,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [config, setConfig] = useState<StoreConfig | null>(null)
+  const [categories, setCategories] = useState<CategoryItem[]>([])
 
   // Load configuration and apply theme
   const loadConfig = () => {
@@ -89,8 +106,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       .catch(err => console.error('Error fetching settings:', err))
   }
 
+  // Load active categories
+  const loadCategories = () => {
+    fetch('/api/categories/')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setCategories(data)
+        }
+      })
+      .catch(err => console.error('Error fetching categories:', err))
+  }
+
   useEffect(() => {
     loadConfig()
+    loadCategories()
   }, [])
 
   // Load from LocalStorage
@@ -177,8 +207,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       isSearchOpen, 
       setIsSearchOpen,
       config,
+      categories,
       reloadConfig: loadConfig,
-      getWhatsAppOrderURL
+      reloadCategories: loadCategories,
+      getWhatsAppOrderURL 
     }}>
       {children}
     </CartContext.Provider>

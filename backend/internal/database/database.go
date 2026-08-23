@@ -70,14 +70,16 @@ func InitDB(databaseURL string) (*gorm.DB, error) {
 	// Auto-Migrate schema
 	log.Println("Ejecutando migraciones automáticas...")
 	if err := db.AutoMigrate(
+		&models.Category{},
 		&models.Product{},
 		&models.Order{},
 		&models.OrderItem{},
 		&models.StoreSettings{},
 	); err != nil {
 		log.Printf("Aviso: Esquema anterior incompatible detectado (%v). Reconstruyendo tablas limpiamente...", err)
-		_ = db.Migrator().DropTable(&models.OrderItem{}, &models.Order{}, &models.Product{}, &models.StoreSettings{})
+		_ = db.Migrator().DropTable(&models.OrderItem{}, &models.Order{}, &models.Product{}, &models.Category{}, &models.StoreSettings{})
 		if err2 := db.AutoMigrate(
+			&models.Category{},
 			&models.Product{},
 			&models.Order{},
 			&models.OrderItem{},
@@ -102,7 +104,21 @@ func InitDB(databaseURL string) (*gorm.DB, error) {
 }
 
 func seedInitialData(db *gorm.DB) {
-	// 1. Seed StoreSettings if empty
+	// 0. Seed Categories if empty
+	var catCount int64
+	db.Model(&models.Category{}).Count(&catCount)
+	if catCount == 0 {
+		log.Println("Sembrando categorías por defecto...")
+		defaultCategories := []models.Category{
+			{ID: uuid.New().String(), Name: "Accesorios", Slug: "accesorios", Icon: "watch", Order: 1, IsActive: true},
+			{ID: uuid.New().String(), Name: "Hogar", Slug: "hogar", Icon: "home", Order: 2, IsActive: true},
+			{ID: uuid.New().String(), Name: "Cafés & Gourmet", Slug: "cafes", Icon: "coffee", Order: 3, IsActive: true},
+			{ID: uuid.New().String(), Name: "General", Slug: "general", Icon: "tag", Order: 4, IsActive: true},
+		}
+		for _, cat := range defaultCategories {
+			db.Create(&cat)
+		}
+	}
 	var settingsCount int64
 	db.Model(&models.StoreSettings{}).Count(&settingsCount)
 	if settingsCount == 0 {

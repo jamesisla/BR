@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   ShoppingBag, 
@@ -7,26 +7,27 @@ import {
   Trash2, 
   Edit3, 
   ExternalLink, 
-  TrendingUp, 
-  Clock, 
-  Truck, 
   X, 
   Save, 
   LogOut, 
   Eye, 
   EyeOff, 
-  Upload, 
   Camera,
   Loader2, 
   Settings as SettingsIcon, 
   Palette, 
-  Image as ImageIcon,
   MessageCircle,
   CreditCard,
-  Phone
+  Layers,
+  Tag,
+  Megaphone,
+  Instagram,
+  Truck,
+  CheckCircle,
+  Sparkles
 } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useCart, formatCLP } from '../context/CartContext'
+import { useCart, formatCLP, formatImageUrl } from '../context/CartContext'
 
 // Compresor y Optimizador Retina/4K para Smartphones y Notebooks
 async function compressImage(file: File, maxWidth = 1600, maxHeight = 1600, quality = 0.88): Promise<File> {
@@ -95,9 +96,9 @@ async function compressImage(file: File, maxWidth = 1600, maxHeight = 1600, qual
 
 export default function AdminDashboardPage() {
   const navigate = useNavigate()
-  const { reloadConfig } = useCart()
+  const { reloadConfig, reloadCategories } = useCart()
   
-  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'settings'>('orders') 
+  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'categories' | 'settings'>('orders') 
   const [uploading, setUploading] = useState(false)
   const [logoUploading, setLogoUploading] = useState(false)
   const [heroUploading, setHeroUploading] = useState(false)
@@ -108,10 +109,23 @@ export default function AdminDashboardPage() {
 
   const [orders, setOrders] = useState<any[]>([])
   const [products, setProducts] = useState<any[]>([])
+  const [categories, setCategories] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  
+  // Product Modal State
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<any>(null)
   
+  // Category Modal State
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
+  const [editingCategory, setEditingCategory] = useState<any>(null)
+  const [categoryForm, setCategoryForm] = useState({
+    name: '',
+    slug: '',
+    icon: 'tag',
+    order: 0
+  })
+
   const [storeSettings, setStoreSettings] = useState({
     name: 'TIENDA DEMO PYME',
     logo_url: '',
@@ -122,7 +136,12 @@ export default function AdminDashboardPage() {
     hero_subtitle: 'Catálogo digital para PYMEs. Haz tu pedido directo por WhatsApp con transferencia.',
     hero_image_url: '',
     whatsapp_number: '+56912345678',
+    whatsapp_message: '¡Hola! Me gustaría hacer un pedido de:',
     bank_details: 'BancoEstado | CuentaRUT: 12.345.678-9 | Titular: Tienda Demo | Correo: pagos@tienda.cl',
+    shipping_info: 'Envíos a todo Chile vía Starken / Chilexpress o retiro acordado por WhatsApp.',
+    instagram_url: '',
+    announcement_bar: '🚚 ¡Envíos a todo Chile! Paga fácil y seguro con Transferencia Bancaria',
+    announcement_active: true,
     currency: 'CLP'
   })
 
@@ -149,6 +168,7 @@ export default function AdminDashboardPage() {
       navigate('/admin/login')
     } else {
       fetchData()
+      fetchCategories()
       fetchSettings()
     }
   }, [])
@@ -168,11 +188,28 @@ export default function AdminDashboardPage() {
           hero_subtitle: data.hero_subtitle || 'Catálogo digital para PYMEs. Haz tu pedido directo por WhatsApp con transferencia.',
           hero_image_url: data.hero_image_url || '',
           whatsapp_number: data.whatsapp_number || '+56912345678',
+          whatsapp_message: data.whatsapp_message || '¡Hola! Me gustaría hacer un pedido de:',
           bank_details: data.bank_details || 'BancoEstado | CuentaRUT: 12.345.678-9 | Titular: Tienda Demo | Correo: pagos@tienda.cl',
+          shipping_info: data.shipping_info || 'Envíos a todo Chile vía Starken / Chilexpress o retiro acordado por WhatsApp.',
+          instagram_url: data.instagram_url || '',
+          announcement_bar: data.announcement_bar || '🚚 ¡Envíos a todo Chile! Paga fácil y seguro con Transferencia Bancaria',
+          announcement_active: data.announcement_active !== false,
           currency: data.currency || 'CLP'
         })
         setLogoPreview(data.logo_url || '')
         setHeroPreview(data.hero_image_url || '')
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const fetchCategories = async () => {
+    try {
+      const res = await fetch('/api/categories/?all=true')
+      const data = await res.json()
+      if (Array.isArray(data)) {
+        setCategories(data)
       }
     } catch (e) {
       console.error(e)
@@ -270,7 +307,7 @@ export default function AdminDashboardPage() {
         name: '',
         slug: '',
         description: '',
-        category: 'general',
+        category: categories.length > 0 ? categories[0].slug : 'general',
         base_price: 19990,
         stock: 10,
         image_url: ''
@@ -280,7 +317,90 @@ export default function AdminDashboardPage() {
     setIsModalOpen(true)
   }
 
-  // Generar Slug automático al escribir el nombre
+  // Categories CRUD Handlers
+  const openCategoryModal = (cat: any = null) => {
+    if (cat) {
+      setEditingCategory(cat)
+      setCategoryForm({
+        name: cat.name,
+        slug: cat.slug,
+        icon: cat.icon || 'tag',
+        order: cat.order || 0
+      })
+    } else {
+      setEditingCategory(null)
+      setCategoryForm({
+        name: '',
+        slug: '',
+        icon: 'tag',
+        order: categories.length + 1
+      })
+    }
+    setIsCategoryModalOpen(true)
+  }
+
+  const handleCategoryNameChange = (name: string) => {
+    const slug = name
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/[\s_-]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+
+    setCategoryForm(prev => ({
+      ...prev,
+      name,
+      slug: editingCategory ? prev.slug : slug
+    }))
+  }
+
+  const handleCategorySubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const method = editingCategory ? 'PUT' : 'POST'
+    const url = editingCategory ? `/api/categories/${editingCategory.id}` : '/api/categories/'
+
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(categoryForm)
+      })
+
+      if (res.ok) {
+        setIsCategoryModalOpen(false)
+        fetchCategories()
+        reloadCategories()
+      } else {
+        const data = await res.json()
+        alert('Error al guardar categoría: ' + (data.detail || 'Verifique los datos'))
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const toggleCategoryStatus = async (catId: string) => {
+    try {
+      await fetch(`/api/categories/${catId}/toggle-active`, { method: 'PATCH' })
+      fetchCategories()
+      reloadCategories()
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const deleteCategoryPermanent = async (catId: string) => {
+    if (!confirm('¿Eliminar esta categoría? Los productos asociados permanecerán pero sin categoría activa.')) return
+    try {
+      await fetch(`/api/categories/${catId}`, { method: 'DELETE' })
+      fetchCategories()
+      reloadCategories()
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  // Generar Slug automático al escribir el nombre del producto
   const handleNameChange = (name: string) => {
     const slug = name
       .toLowerCase()
@@ -476,11 +596,11 @@ export default function AdminDashboardPage() {
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-64 bg-white border-r border-slate-200 p-6 flex-col gap-6 h-screen sticky top-0">
         <div>
-           <h2 className="font-serif text-2xl font-bold text-slate-800 tracking-tight">Admin Móvil</h2>
+           <h2 className="font-serif text-2xl font-bold text-slate-800 tracking-tight">Admin PYME</h2>
            <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mt-1">Control de Tienda</p>
         </div>
 
-        <nav className="flex flex-col gap-2">
+        <nav className="flex flex-col gap-1.5">
           <button 
             onClick={() => setActiveTab('orders')}
             className={`flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-xs tracking-wider transition-all ${activeTab === 'orders' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}
@@ -496,11 +616,18 @@ export default function AdminDashboardPage() {
             <span>Productos</span>
           </button>
           <button 
+            onClick={() => setActiveTab('categories')}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-xs tracking-wider transition-all ${activeTab === 'categories' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}
+          >
+            <Layers size={18} />
+            <span>Categorías</span>
+          </button>
+          <button 
             onClick={() => setActiveTab('settings')}
             className={`flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-xs tracking-wider transition-all ${activeTab === 'settings' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}
           >
             <SettingsIcon size={18} />
-            <span>Personalización</span>
+            <span>Configuración</span>
           </button>
         </nav>
 
@@ -523,7 +650,9 @@ export default function AdminDashboardPage() {
           <div>
             <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400 block md:hidden">Panel de Control</span>
             <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 capitalize">
-              {activeTab === 'orders' ? 'Gestión de Pedidos' : activeTab === 'products' ? 'Catálogo de Productos' : 'Personalización & WhatsApp'}
+              {activeTab === 'orders' ? 'Gestión de Pedidos' : 
+               activeTab === 'products' ? 'Catálogo de Productos' : 
+               activeTab === 'categories' ? 'Gestión de Categorías' : 'Personalización de Tienda'}
             </h1>
           </div>
           
@@ -537,6 +666,14 @@ export default function AdminDashboardPage() {
                 className="btn-primary !py-2.5 !px-4 text-xs font-bold rounded-xl shadow-lg flex items-center gap-1.5"
               >
                 <Plus size={16} /> <span className="hidden sm:inline">Añadir Producto</span><span className="sm:hidden">Nuevo</span>
+              </button>
+            )}
+            {activeTab === 'categories' && (
+              <button 
+                onClick={() => openCategoryModal()}
+                className="btn-primary !py-2.5 !px-4 text-xs font-bold rounded-xl shadow-lg flex items-center gap-1.5"
+              >
+                <Plus size={16} /> <span className="hidden sm:inline">Añadir Categoría</span><span className="sm:hidden">Nueva</span>
               </button>
             )}
           </div>
@@ -560,7 +697,7 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* Tab Content */}
+        {/* Tab Content Container */}
         <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden p-4 sm:p-6">
           {/* ORDERS TAB */}
           {activeTab === 'orders' ? (
@@ -598,16 +735,15 @@ export default function AdminDashboardPage() {
                               className="px-3 py-1.5 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700"
                               title="Marcar como pagado"
                             >
-                              ✓ Pagado
+                              Confirmar Pago
                             </button>
                           )}
-                          {order.status !== 'shipped' && order.status !== 'cancelled' && (
+                          {order.status === 'paid' && (
                             <button 
                               onClick={() => updateOrderStatus(order.id, 'shipped')}
-                              className="p-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl"
-                              title="Marcar como enviado"
+                              className="px-3 py-1.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700"
                             >
-                              <Truck size={16} />
+                              Marcar Enviado
                             </button>
                           )}
                         </div>
@@ -617,45 +753,160 @@ export default function AdminDashboardPage() {
                 </div>
               )}
             </div>
+          ) : activeTab === 'categories' ? (
+            /* CATEGORIES TAB */
+            <div className="space-y-4">
+              <div className="flex justify-between items-center pb-4 border-b border-slate-100">
+                 <div>
+                    <h3 className="font-bold text-base text-slate-900">Categorías de la Tienda</h3>
+                    <p className="text-xs text-slate-400">Organiza tus productos en secciones visibles en la barra superior.</p>
+                 </div>
+                 <button 
+                    onClick={() => openCategoryModal()}
+                    className="btn-primary !py-2.5 !px-4 text-xs font-bold rounded-xl shadow-md flex items-center gap-1.5"
+                 >
+                    <Plus size={16} /> Añadir Categoría
+                 </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {categories.map((cat: any) => {
+                  const prodCount = products.filter(p => p.category?.toLowerCase() === cat.slug?.toLowerCase()).length
+                  return (
+                    <div key={cat.id} className={`p-4 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col justify-between ${!cat.is_active ? 'opacity-40' : ''}`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2.5">
+                           <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-600 font-bold">
+                              <Tag size={16} />
+                           </div>
+                           <div>
+                              <h4 className="font-bold text-sm text-slate-900 capitalize">{cat.name}</h4>
+                              <span className="text-[10px] font-mono text-slate-400">/{cat.slug}</span>
+                           </div>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-700">
+                           {prodCount} prods
+                        </span>
+                      </div>
+
+                      <div className="flex gap-2 pt-3 border-t border-slate-200 justify-end">
+                        <button 
+                          onClick={() => openCategoryModal(cat)}
+                          className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 rounded-xl text-xs font-bold flex items-center gap-1"
+                        >
+                          <Edit3 size={14} /> Editar
+                        </button>
+                        <button 
+                          onClick={() => toggleCategoryStatus(cat.id)}
+                          className={`p-2 rounded-xl border ${cat.is_active ? 'border-slate-200 text-slate-400 hover:text-red-500' : 'border-emerald-200 text-emerald-600 bg-emerald-50'}`}
+                          title={cat.is_active ? 'Desactivar' : 'Activar'}
+                        >
+                          {cat.is_active ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                        <button 
+                          onClick={() => deleteCategoryPermanent(cat.id)}
+                          className="p-2 border border-slate-200 text-slate-300 hover:text-red-600 rounded-xl"
+                          title="Eliminar"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           ) : activeTab === 'settings' ? (
-            /* SETTINGS / WIZARD TAB */
-            <div className="max-w-2xl">
-               <form onSubmit={handleSettingsSubmit} className="space-y-6">
-                  {/* WhatsApp Section */}
-                  <div className="p-5 bg-emerald-50/50 border border-emerald-200/60 rounded-2xl">
-                    <h3 className="text-sm font-bold text-emerald-900 mb-3 flex items-center gap-2">
-                       <MessageCircle size={18} className="text-emerald-600" /> WhatsApp para Pedidos
-                    </h3>
-                    <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-1">Número de WhatsApp (con código de país)</label>
-                    <input 
-                      type="text" 
-                      value={storeSettings.whatsapp_number}
-                      onChange={(e) => setStoreSettings({...storeSettings, whatsapp_number: e.target.value})}
-                      placeholder="+56912345678"
-                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl font-mono text-sm"
-                    />
-                    <p className="text-[11px] text-slate-500 mt-1">Aquí recibirás los pedidos y comprobantes de tus clientes directamente en tu teléfono.</p>
+            /* SETTINGS TAB */
+            <div className="max-w-2xl mx-auto py-2">
+                <form onSubmit={handleSettingsSubmit} className="space-y-6">
+                  {/* Announcement Bar */}
+                  <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl">
+                     <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                           <Megaphone size={18} className="text-emerald-600" /> Barra de Anuncios Superior
+                        </h3>
+                        <label className="flex items-center gap-2 cursor-pointer text-xs font-bold">
+                           <input 
+                              type="checkbox" 
+                              checked={storeSettings.announcement_active}
+                              onChange={(e) => setStoreSettings({...storeSettings, announcement_active: e.target.checked})}
+                              className="rounded border-slate-300 text-slate-900 focus:ring-0 w-4 h-4"
+                           />
+                           <span>{storeSettings.announcement_active ? 'Visible' : 'Oculta'}</span>
+                        </label>
+                     </div>
+                     <input 
+                        type="text" 
+                        value={storeSettings.announcement_bar}
+                        onChange={(e) => setStoreSettings({...storeSettings, announcement_bar: e.target.value})}
+                        placeholder="Ej: 🚚 ¡Envíos gratis sobre $30.000 a todo Chile!"
+                        className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs"
+                     />
                   </div>
 
-                  {/* Bank Details Section */}
-                  <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl">
-                    <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
-                       <CreditCard size={18} className="text-slate-600" /> Datos de Transferencia Bancaria
+                  {/* WhatsApp Sales Flow */}
+                  <div className="p-5 bg-emerald-50/60 border border-emerald-100 rounded-2xl">
+                    <h3 className="text-sm font-bold text-emerald-900 mb-3 flex items-center gap-2">
+                       <MessageCircle size={18} className="text-emerald-600" /> Canal de Ventas por WhatsApp
                     </h3>
-                    <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-1">Datos de tu Cuenta (Banco, Tipo, RUT, Titular, Email)</label>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-[10px] uppercase tracking-widest font-bold text-slate-500 block mb-1">Número de WhatsApp (con código +569)</label>
+                        <input 
+                          type="text" 
+                          value={storeSettings.whatsapp_number}
+                          onChange={(e) => setStoreSettings({...storeSettings, whatsapp_number: e.target.value})}
+                          placeholder="+56912345678"
+                          className="w-full px-4 py-3 bg-white border border-emerald-200 rounded-xl font-bold font-mono text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] uppercase tracking-widest font-bold text-slate-500 block mb-1">Mensaje de Inicio</label>
+                        <input 
+                          type="text" 
+                          value={storeSettings.whatsapp_message}
+                          onChange={(e) => setStoreSettings({...storeSettings, whatsapp_message: e.target.value})}
+                          placeholder="¡Hola! Me gustaría hacer un pedido de:"
+                          className="w-full px-4 py-2.5 bg-white border border-emerald-200 rounded-xl text-xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bank Details */}
+                  <div className="p-5 bg-amber-50/60 border border-amber-100 rounded-2xl">
+                    <h3 className="text-sm font-bold text-amber-900 mb-2 flex items-center gap-2">
+                       <CreditCard size={18} className="text-amber-600" /> Datos Bancarios para Transferencia (Chile)
+                    </h3>
+                    <p className="text-xs text-amber-700/80 mb-3">Estos datos se le solicitarán al cliente para acordar el pago por WhatsApp.</p>
                     <textarea 
-                      rows={3}
+                      rows={2}
                       value={storeSettings.bank_details}
                       onChange={(e) => setStoreSettings({...storeSettings, bank_details: e.target.value})}
                       placeholder="BancoEstado | CuentaRUT: 12.345.678-9 | Titular: Tu Nombre | Email: pagos@tuemail.cl"
-                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-mono"
+                      className="w-full px-4 py-3 bg-white border border-amber-200 rounded-xl text-xs font-mono"
+                    />
+                  </div>
+
+                  {/* Shipping Info */}
+                  <div className="p-5 bg-blue-50/60 border border-blue-100 rounded-2xl">
+                    <h3 className="text-sm font-bold text-blue-900 mb-2 flex items-center gap-2">
+                       <Truck size={18} className="text-blue-600" /> Información de Envíos y Retiros
+                    </h3>
+                    <input 
+                      type="text"
+                      value={storeSettings.shipping_info}
+                      onChange={(e) => setStoreSettings({...storeSettings, shipping_info: e.target.value})}
+                      placeholder="Envíos a todo Chile vía Starken / Chilexpress o retiro acordado por WhatsApp."
+                      className="w-full px-4 py-2.5 bg-white border border-blue-200 rounded-xl text-xs"
                     />
                   </div>
 
                   {/* Branding Section */}
                   <div>
                     <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
-                       <Palette size={18} className="text-slate-400" /> Nombre & Logo de tu Negocio
+                       <Palette size={18} className="text-slate-400" /> Nombre, Logo & Portada
                     </h3>
                     
                     <div className="space-y-4">
@@ -674,7 +925,7 @@ export default function AdminDashboardPage() {
                           <div className="flex gap-4 items-center">
                              <div className="w-16 h-16 bg-slate-50 border border-dashed border-slate-200 rounded-2xl flex items-center justify-center overflow-hidden relative">
                                 {(logoPreview || storeSettings.logo_url) ? (
-                                  <img src={logoPreview || storeSettings.logo_url} className="w-full h-full object-contain" alt="Logo" />
+                                  <img src={formatImageUrl(logoPreview || storeSettings.logo_url)} className="w-full h-full object-contain" alt="Logo" />
                                 ) : (
                                   <Palette className="text-slate-300" size={24} />
                                 )}
@@ -702,10 +953,10 @@ export default function AdminDashboardPage() {
 
                        {/* Portada Hero Banner */}
                        <div className="pt-4 border-t border-slate-100">
-                          <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-2">Imagen de Portada (Hero Banner)</label>
+                          <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-2">Imagen de Portada (Hero Banner Retina/4K)</label>
                           <label className="cursor-pointer block w-full h-36 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl overflow-hidden hover:border-slate-400 transition-all relative mb-3">
                              {(heroPreview || storeSettings.hero_image_url) ? (
-                               <img src={heroPreview || storeSettings.hero_image_url} className="w-full h-full object-cover" alt="Portada" />
+                               <img src={formatImageUrl(heroPreview || storeSettings.hero_image_url)} className="w-full h-full object-cover" alt="Portada" />
                              ) : (
                                <div className="flex flex-col items-center justify-center h-full gap-1.5 text-slate-400">
                                   <Camera size={28} />
@@ -774,7 +1025,7 @@ export default function AdminDashboardPage() {
                   </div>
                   
                   <button type="submit" disabled={logoUploading || heroUploading} className="btn-primary w-full py-4 text-xs font-bold rounded-2xl shadow-xl justify-center">
-                     <Save size={16} /> Guardar Configuración
+                     <Save size={16} /> Guardar Toda la Configuración
                   </button>
                </form>
             </div>
@@ -786,7 +1037,7 @@ export default function AdminDashboardPage() {
                   <div className="flex gap-3 mb-3">
                     <div className="w-16 h-20 bg-white rounded-xl overflow-hidden flex-shrink-0 border border-slate-100">
                        <img 
-                         src={product.image_url || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=200&auto=format&fit=crop"} 
+                         src={formatImageUrl(product.image_url) || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=200&auto=format&fit=crop"} 
                          className="w-full h-full object-cover" 
                          alt={product.name}
                          onError={(e: any) => {
@@ -842,19 +1093,27 @@ export default function AdminDashboardPage() {
         </button>
 
         <button 
-          onClick={() => openProductModal()}
-          className="w-12 h-12 bg-slate-900 text-white rounded-full flex items-center justify-center shadow-lg -mt-5"
-          title="Añadir Producto"
-        >
-          <Plus size={24} />
-        </button>
-
-        <button 
           onClick={() => setActiveTab('products')}
           className={`flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] font-bold ${activeTab === 'products' ? 'text-slate-900' : 'text-slate-400'}`}
         >
           <Package size={20} />
           <span>Productos</span>
+        </button>
+
+        <button 
+          onClick={() => (activeTab === 'categories' ? openCategoryModal() : openProductModal())}
+          className="w-12 h-12 bg-slate-900 text-white rounded-full flex items-center justify-center shadow-lg -mt-5"
+          title="Añadir"
+        >
+          <Plus size={24} />
+        </button>
+
+        <button 
+          onClick={() => setActiveTab('categories')}
+          className={`flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] font-bold ${activeTab === 'categories' ? 'text-slate-900' : 'text-slate-400'}`}
+        >
+          <Layers size={20} />
+          <span>Categorías</span>
         </button>
 
         <button 
@@ -865,6 +1124,81 @@ export default function AdminDashboardPage() {
           <span>Ajustes</span>
         </button>
       </div>
+
+      {/* Modal Add/Edit Category */}
+      <AnimatePresence>
+        {isCategoryModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsCategoryModalOpen(false)}
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="relative w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl z-10"
+            >
+              <div className="flex justify-between items-center mb-5">
+                 <div>
+                   <h3 className="text-lg font-bold text-slate-900">{editingCategory ? 'Editar Categoría' : 'Nueva Categoría'}</h3>
+                   <p className="text-[10px] uppercase font-bold text-slate-400">Sección de Productos</p>
+                 </div>
+                 <button onClick={() => setIsCategoryModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-900 rounded-full hover:bg-slate-100">
+                    <X size={20} />
+                 </button>
+              </div>
+
+              <form onSubmit={handleCategorySubmit} className="space-y-4">
+                <div>
+                   <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-1">Nombre de la Categoría *</label>
+                   <input 
+                     type="text" 
+                     required
+                     value={categoryForm.name}
+                     onChange={(e) => handleCategoryNameChange(e.target.value)}
+                     placeholder="Ej: Calzado, Cafés, Joyería..."
+                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold"
+                   />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-1">Slug (URL)</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={categoryForm.slug}
+                      onChange={(e) => setCategoryForm({...categoryForm, slug: e.target.value})}
+                      placeholder="calzado"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-1">Orden en Menú</label>
+                    <input 
+                      type="number" 
+                      value={categoryForm.order}
+                      onChange={(e) => setCategoryForm({...categoryForm, order: Number(e.target.value)})}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                   <button type="submit" className="btn-primary w-full py-3.5 text-xs font-bold justify-center rounded-2xl shadow-xl">
+                      <Save size={16} /> {editingCategory ? 'Guardar Cambios' : 'Crear Categoría'}
+                   </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Modal Add/Edit Product (Mobile Optimized Bottom-sheet) */}
       <AnimatePresence>
@@ -897,12 +1231,12 @@ export default function AdminDashboardPage() {
               <form onSubmit={handleProductSubmit} className="space-y-4">
                  {/* Photo Upload with Camera Trigger */}
                  <div>
-                    <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-1.5">Foto del Producto</label>
+                    <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-1.5">Foto del Producto (Optimizada Retina/HD)</label>
                     <div className="flex gap-3 items-center">
                        <label className="cursor-pointer w-20 h-24 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl flex items-center justify-center overflow-hidden flex-shrink-0 relative hover:border-slate-400 transition-all">
                           {(productImagePreview || productForm.image_url) ? (
                             <img 
-                              src={productImagePreview || productForm.image_url} 
+                              src={formatImageUrl(productImagePreview || productForm.image_url)} 
                               className="w-full h-full object-cover" 
                               alt="Preview"
                               onError={(e: any) => {
@@ -981,21 +1315,16 @@ export default function AdminDashboardPage() {
                  <div className="grid grid-cols-2 gap-3">
                    <div>
                       <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-1">Categoría</label>
-                      <input 
-                        type="text" 
-                        list="cat-list"
+                      <select 
                         value={productForm.category}
                         onChange={(e) => setProductForm({...productForm, category: e.target.value})}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
-                        placeholder="general, cafes..."
-                      />
-                      <datalist id="cat-list">
-                        <option value="general" />
-                        <option value="accesorios" />
-                        <option value="cafes" />
-                        <option value="hogar" />
-                        <option value="ropa" />
-                      </datalist>
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold capitalize"
+                      >
+                        {categories.map(cat => (
+                          <option key={cat.id} value={cat.slug}>{cat.name}</option>
+                        ))}
+                        <option value="general">General</option>
+                      </select>
                    </div>
 
                    <div>

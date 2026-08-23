@@ -49,6 +49,7 @@ func main() {
 	settingsHandler := handlers.NewSettingsHandler(db)
 	orderHandler := handlers.NewOrderHandler(db)
 	paymentHandler := handlers.NewPaymentHandler(db, mpService)
+	categoryHandler := handlers.NewCategoryHandler(db, cfg)
 
 	// 4. Create Router
 	r := gin.New()
@@ -184,6 +185,18 @@ func main() {
 			settingsGroup.GET("", settingsHandler.GetSettings)
 			settingsGroup.POST("/", settingsHandler.UpdateSettings)
 			settingsGroup.POST("", settingsHandler.UpdateSettings)
+		}
+
+		// Categories
+		categoryGroup := api.Group("/categories")
+		{
+			categoryGroup.GET("/", categoryHandler.ListCategories)
+			categoryGroup.GET("", categoryHandler.ListCategories)
+			categoryGroup.POST("/", categoryHandler.CreateCategory)
+			categoryGroup.POST("", categoryHandler.CreateCategory)
+			categoryGroup.PUT("/:id", categoryHandler.UpdateCategory)
+			categoryGroup.PATCH("/:id/toggle-active", categoryHandler.ToggleCategoryActive)
+			categoryGroup.DELETE("/:id", categoryHandler.DeleteCategory)
 		}
 
 		// Products
