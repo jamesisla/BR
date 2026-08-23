@@ -97,6 +97,9 @@ export default function ProductDetailPage() {
                  src={product.image_url || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=1200&auto=format&fit=crop"} 
                  alt={product.name}
                  className="w-full h-full object-cover"
+                 onError={(e: any) => {
+                   e.target.src = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=1200&auto=format&fit=crop"
+                 }}
                />
             </div>
           </motion.div>

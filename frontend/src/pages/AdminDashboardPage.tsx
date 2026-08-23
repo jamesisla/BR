@@ -62,7 +62,11 @@ async function compressImage(file: File, maxWidth = 1200, maxHeight = 1200, qual
           return
         }
 
+        // Rellenar fondo blanco para evitar fondo negro en PNGs transparentes
+        ctx.fillStyle = '#FFFFFF'
+        ctx.fillRect(0, 0, width, height)
         ctx.drawImage(img, 0, 0, width, height)
+
         canvas.toBlob(
           (blob) => {
             if (blob) {

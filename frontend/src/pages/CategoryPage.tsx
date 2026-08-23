@@ -62,6 +62,9 @@ export default function CategoryPage() {
                       src={product.image_url || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=800&auto=format&fit=crop"}
                       alt={product.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      onError={(e: any) => {
+                        e.target.src = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=800&auto=format&fit=crop"
+                      }}
                     />
                   </div>
                   <div className="p-5 sm:p-6 flex flex-col flex-1 text-center">
