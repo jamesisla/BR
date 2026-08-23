@@ -10,6 +10,10 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -n "$SUDO_USER" ]; then
+    chown -R "$SUDO_USER:$SUDO_USER" "$PROJECT_DIR" 2>/dev/null || true
+fi
+
 echo -e "${YELLOW}🔄 Actualizando Tienda E-Commerce desde GitHub...${NC}"
 
 cd "$PROJECT_DIR"
