@@ -28,8 +28,8 @@ import {
 import { Link, useNavigate } from 'react-router-dom'
 import { useCart, formatCLP } from '../context/CartContext'
 
-// Compresor de imágenes en el cliente: Convierte HEIC de iPhone a JPEG y reduce a ~150KB en milisegundos
-async function compressImage(file: File, maxWidth = 1200, maxHeight = 1200, quality = 0.85): Promise<File> {
+// Compresor y Optimizador Retina/4K para Smartphones y Notebooks
+async function compressImage(file: File, maxWidth = 1600, maxHeight = 1600, quality = 0.88): Promise<File> {
   return new Promise((resolve) => {
     if (!file.type.startsWith('image/')) {
       resolve(file)
@@ -43,14 +43,11 @@ async function compressImage(file: File, maxWidth = 1200, maxHeight = 1200, qual
         let width = img.width
         let height = img.height
 
+        // Escalado proporcional de alta fidelidad
         if (width > maxWidth || height > maxHeight) {
-          if (width > height) {
-            height = Math.round((height * maxWidth) / width)
-            width = maxWidth
-          } else {
-            width = Math.round((width * maxHeight) / height)
-            height = maxHeight
-          }
+          const ratio = Math.min(maxWidth / width, maxHeight / height)
+          width = Math.round(width * ratio)
+          height = Math.round(height * ratio)
         }
 
         const canvas = document.createElement('canvas')
@@ -62,7 +59,11 @@ async function compressImage(file: File, maxWidth = 1200, maxHeight = 1200, qual
           return
         }
 
-        // Rellenar fondo blanco para evitar fondo negro en PNGs transparentes
+        // Suavizado bicúbico de máxima calidad para pantallas Retina y OLED
+        ctx.imageSmoothingEnabled = true
+        ctx.imageSmoothingQuality = 'high'
+
+        // Rellenar fondo blanco limpio para evitar fondo negro en PNGs transparentes
         ctx.fillStyle = '#FFFFFF'
         ctx.fillRect(0, 0, width, height)
         ctx.drawImage(img, 0, 0, width, height)
@@ -344,8 +345,8 @@ export default function AdminDashboardPage() {
 
     setUploading(true)
     try {
-      // 1. Comprimir en el navegador
-      const compressed = await compressImage(file, 1200, 1200, 0.85)
+      // 1. Comprimir y optimizar a resolución Retina 1600px en el navegador
+      const compressed = await compressImage(file, 1600, 1600, 0.88)
 
       // 2. Mostrar vista previa local
       const preview = URL.createObjectURL(compressed)
@@ -383,7 +384,7 @@ export default function AdminDashboardPage() {
 
     setLogoUploading(true)
     try {
-      const compressed = await compressImage(file, 800, 800, 0.9)
+      const compressed = await compressImage(file, 800, 800, 0.92)
       const preview = URL.createObjectURL(compressed)
       setLogoPreview(preview)
 
@@ -418,7 +419,7 @@ export default function AdminDashboardPage() {
 
     setHeroUploading(true)
     try {
-      const compressed = await compressImage(file, 1600, 1200, 0.85)
+      const compressed = await compressImage(file, 2048, 1200, 0.88)
       const preview = URL.createObjectURL(compressed)
       setHeroPreview(preview)
 
