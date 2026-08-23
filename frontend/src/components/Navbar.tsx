@@ -1,49 +1,49 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { ShoppingBag, Search, User, Menu } from 'lucide-react'
+import { ShoppingBag, Search, User } from 'lucide-react'
 import { useCart } from '../context/CartContext'
 
 export default function Navbar() {
   const { totalItems, setIsCartOpen, setIsSearchOpen, config } = useCart()
 
   return (
-    <header className="bg-white/90 backdrop-blur-md border-b border-black/5 sticky top-0 z-40 w-full transition-all">
-      <div className="container flex items-center justify-between py-5">
-        <div className="flex items-center gap-6">
+    <header className="bg-white/95 backdrop-blur-md border-b border-black/5 sticky top-0 z-40 w-full transition-all">
+      <div className="container flex items-center justify-between py-4 px-4 sm:px-6">
+        <div className="flex items-center gap-4">
           <button 
             onClick={() => setIsSearchOpen(true)}
-            className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 text-slate-600 hover:text-slate-900 transition-colors p-2 rounded-full hover:bg-slate-100/70"
             aria-label="Buscar"
           >
-            <Search size={19} />
-            <span className="text-xs uppercase font-bold tracking-wider hidden md:inline">Buscar</span>
+            <Search size={20} />
+            <span className="text-[11px] uppercase font-bold tracking-wider hidden md:inline">Buscar</span>
           </button>
         </div>
         
-        <Link to="/" className="text-decoration-none">
-          <div className="flex items-center gap-3 justify-center">
+        <Link to="/" className="text-decoration-none flex-1 text-center max-w-[60%] sm:max-w-none">
+          <div className="flex items-center gap-2.5 justify-center">
             {config?.logo_url ? (
-              <img src={config.logo_url} alt={config.name} className="h-10 w-auto object-contain" />
+              <img src={config.logo_url} alt={config.name} className="h-8 sm:h-10 w-auto object-contain max-w-[120px]" />
             ) : null}
-            <h1 className="font-serif text-2xl md:text-3xl font-extrabold tracking-tight" style={{ color: 'var(--primary)', margin: 0 }}>
-              {config?.name || 'TIENDA ARTISAN'}
+            <h1 className="font-serif text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight truncate" style={{ color: 'var(--primary)' }}>
+              {config?.name || 'TIENDA DEMO'}
             </h1>
           </div>
         </Link>
 
-        <div className="flex items-center gap-6">
-          <Link to="/admin" className="text-slate-400 hover:text-slate-900 transition-colors hidden sm:flex items-center gap-1 text-xs font-bold uppercase tracking-wider">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <Link to="/admin" className="text-slate-400 hover:text-slate-900 transition-colors p-2 rounded-full hover:bg-slate-100 hidden sm:flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider">
             <User size={18} />
-            <span>Admin</span>
+            <span className="hidden md:inline">Admin</span>
           </Link>
 
           <div 
             onClick={() => setIsCartOpen(true)}
-            className="relative cursor-pointer p-2 hover:bg-slate-50 rounded-full transition-colors"
+            className="relative cursor-pointer p-2 hover:bg-slate-100/70 rounded-full transition-colors"
           >
             <ShoppingBag size={22} style={{ color: 'var(--primary)' }} />
             {totalItems > 0 && (
-              <span className="absolute -top-1 -right-1 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full font-bold shadow-md animate-scale" style={{ background: 'var(--secondary)' }}>
+              <span className="absolute 0 top-0.5 right-0.5 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full font-bold shadow-md" style={{ background: 'var(--secondary)' }}>
                 {totalItems}
               </span>
             )}
@@ -51,12 +51,13 @@ export default function Navbar() {
         </div>
       </div>
 
-      <nav className="flex justify-center border-t border-black/5">
-        <div className="flex overflow-x-auto py-1">
-          <Link to="/" className="nav-link">Inicio</Link>
-          <a href="/#productos" className="nav-link">Catálogo</a>
-          <Link to="/category/accesorios" className="nav-link">Accesorios</Link>
-          <Link to="/category/general" className="nav-link">Colección</Link>
+      <nav className="flex justify-center border-t border-black/5 bg-white/60">
+        <div className="flex overflow-x-auto py-1 px-4 no-scrollbar gap-2 sm:gap-4">
+          <Link to="/" className="nav-link whitespace-nowrap !py-2.5 !px-3 sm:!px-6">Inicio</Link>
+          <a href="/#productos" className="nav-link whitespace-nowrap !py-2.5 !px-3 sm:!px-6">Catálogo</a>
+          <Link to="/category/accesorios" className="nav-link whitespace-nowrap !py-2.5 !px-3 sm:!px-6">Accesorios</Link>
+          <Link to="/category/hogar" className="nav-link whitespace-nowrap !py-2.5 !px-3 sm:!px-6">Hogar</Link>
+          <Link to="/category/cafes" className="nav-link whitespace-nowrap !py-2.5 !px-3 sm:!px-6">Cafés</Link>
         </div>
       </nav>
     </header>

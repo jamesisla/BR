@@ -11,7 +11,7 @@ type Product struct {
 	Slug        string    `gorm:"type:varchar(255);uniqueIndex;not null" json:"slug"`
 	Description string    `gorm:"type:text" json:"description"`
 	Category    string    `gorm:"type:varchar(100);default:'general'" json:"category"`
-	BasePrice   float64   `gorm:"type:decimal(10,2);not null" json:"base_price"`
+	BasePrice   float64   `gorm:"type:decimal(12,0);not null" json:"base_price"`
 	Stock       int       `gorm:"type:integer;default:10" json:"stock"`
 	ImageURL    string    `gorm:"type:varchar(500)" json:"image_url"`
 	IsActive    bool      `gorm:"type:boolean;default:true" json:"is_active"`
@@ -38,7 +38,7 @@ type Order struct {
 	FirstName string      `gorm:"type:varchar(255);not null" json:"first_name"`
 	LastName  string      `gorm:"type:varchar(255);not null" json:"last_name"`
 	Address   string      `gorm:"type:text;not null" json:"address"`
-	Total     float64     `gorm:"type:decimal(10,2);not null" json:"total"`
+	Total     float64     `gorm:"type:decimal(12,0);not null" json:"total"`
 	Status    string      `gorm:"type:varchar(50);default:'pending'" json:"status"` // pending, paid, shipped, cancelled
 	CreatedAt time.Time   `gorm:"autoCreateTime" json:"created_at"`
 	Items     []OrderItem `gorm:"foreignKey:OrderID;constraint:OnDelete:CASCADE" json:"items"`
@@ -50,7 +50,7 @@ type OrderItem struct {
 	OrderID         string   `gorm:"type:varchar(36);index;not null" json:"order_id"`
 	ProductID       string   `gorm:"type:varchar(36);not null" json:"product_id"`
 	Quantity        int      `gorm:"not null" json:"quantity"`
-	PriceAtPurchase float64  `gorm:"type:decimal(10,2);not null" json:"price_at_purchase"`
+	PriceAtPurchase float64  `gorm:"type:decimal(12,0);not null" json:"price_at_purchase"`
 	Product         *Product `gorm:"foreignKey:ProductID" json:"product,omitempty"`
 }
 
@@ -71,17 +71,20 @@ type OrderItemCreate struct {
 	PriceAtPurchase float64 `json:"price_at_purchase" binding:"required"`
 }
 
-// StoreSettings represents store branding and landing page customization
+// StoreSettings represents store branding, WhatsApp orders and payment info
 type StoreSettings struct {
 	ID             uint   `gorm:"primaryKey" json:"id"`
 	Name           string `gorm:"type:varchar(255);default:'TIENDA ARTISAN'" json:"name"`
 	LogoURL        string `gorm:"type:varchar(500);default:''" json:"logo_url"`
-	PrimaryColor   string `gorm:"type:varchar(50);default:'#3d2b1f'" json:"primary_color"`
-	SecondaryColor string `gorm:"type:varchar(50);default:'#a67c52'" json:"secondary_color"`
-	FooterText     string `gorm:"type:text;default:'© 2026 Tienda Artisan. Crafted for purity.'" json:"footer_text"`
-	HeroTitle      string `gorm:"type:varchar(255);default:'El Arte de la Pureza'" json:"hero_title"`
-	HeroSubtitle   string `gorm:"type:varchar(500);default:'Descubre nuestra selección artesanal única.'" json:"hero_subtitle"`
+	PrimaryColor   string `gorm:"type:varchar(50);default:'#2d1b0e'" json:"primary_color"`
+	SecondaryColor string `gorm:"type:varchar(50);default:'#9c6644'" json:"secondary_color"`
+	FooterText     string `gorm:"type:text;default:'© 2026 Tienda Artisan. Todos los derechos reservados.'" json:"footer_text"`
+	HeroTitle      string `gorm:"type:varchar(255);default:'El Arte de la Calidad'" json:"hero_title"`
+	HeroSubtitle   string `gorm:"type:varchar(500);default:'Descubre nuestra selección exclusiva. Pedidos directos por WhatsApp.'" json:"hero_subtitle"`
 	HeroImageURL   string `gorm:"type:varchar(500);default:''" json:"hero_image_url"`
+	WhatsAppNumber string `gorm:"type:varchar(50);default:'+56912345678'" json:"whatsapp_number"`
+	BankDetails    string `gorm:"type:text;default:'Banco Estado - Cuenta RUT: 12.345.678-9 - email@ejemplo.cl'" json:"bank_details"`
+	Currency       string `gorm:"type:varchar(10);default:'CLP'" json:"currency"`
 }
 
 // LoginRequest represents admin login credentials

@@ -100,14 +100,17 @@ func seedInitialData(db *gorm.DB) {
 	if settingsCount == 0 {
 		log.Println("Inicializando configuración por defecto de la tienda...")
 		defaultSettings := models.StoreSettings{
-			Name:           "TIENDA ARTISAN",
+			Name:           "TIENDA DEMO PYME",
 			LogoURL:        "",
-			PrimaryColor:   "#3d2b1f",
-			SecondaryColor: "#a67c52",
-			FooterText:     "© 2026 Tienda Artisan. Crafted for purity.",
-			HeroTitle:      "El Arte de la Pureza",
-			HeroSubtitle:   "Descubre nuestra selección artesanal única.",
+			PrimaryColor:   "#2d1b0e",
+			SecondaryColor: "#9c6644",
+			FooterText:     "© 2026 Tienda Demo. Venta directa por WhatsApp.",
+			HeroTitle:      "Emprende con Estilo",
+			HeroSubtitle:   "Catálogo digital para PYMEs. Haz tu pedido directo por WhatsApp con transferencia.",
 			HeroImageURL:   "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=2000&auto=format&fit=crop",
+			WhatsAppNumber: "+56912345678",
+			BankDetails:    "BancoEstado | CuentaRUT: 12.345.678-9 | Titular: Tienda PYME | Correo: pagos@tienda.cl",
+			Currency:       "CLP",
 		}
 		db.Create(&defaultSettings)
 	}
@@ -116,48 +119,48 @@ func seedInitialData(db *gorm.DB) {
 	var productCount int64
 	db.Model(&models.Product{}).Count(&productCount)
 	if productCount == 0 {
-		log.Println("Sembrando catálogo de productos de muestra...")
+		log.Println("Sembrando catálogo de productos con precios CLP...")
 		demoProducts := []models.Product{
 			{
 				ID:          uuid.New().String(),
-				Name:        "Aura Headphones",
-				Slug:        "aura-headphones",
-				Description: "Disfruta de un sonido puro con cancelación activa de ruido y 40 horas de batería continua.",
+				Name:        "Audífonos Bluetooth Pro",
+				Slug:        "audifonos-bluetooth-pro",
+				Description: "Cancelación activa de ruido, 40 horas de batería y sonido de alta fidelidad.",
 				Category:    "accesorios",
-				BasePrice:   299.99,
+				BasePrice:   49990,
 				Stock:       15,
 				ImageURL:    "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=800&auto=format&fit=crop",
 				IsActive:    true,
 			},
 			{
 				ID:          uuid.New().String(),
-				Name:        "Nebula Smart Watch",
-				Slug:        "nebula-watch",
-				Description: "El futuro en tu muñeca. Monitoreo avanzado de salud, GPS integrado y conectividad sin límites.",
+				Name:        "Smartwatch Deportivo V2",
+				Slug:        "smartwatch-deportivo",
+				Description: "Monitoreo cardíaco, GPS integrado, sumergible y notificaciones de WhatsApp.",
 				Category:    "accesorios",
-				BasePrice:   499.00,
+				BasePrice:   79900,
 				Stock:       10,
 				ImageURL:    "https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=800&auto=format&fit=crop",
 				IsActive:    true,
 			},
 			{
 				ID:          uuid.New().String(),
-				Name:        "Lumina Desk Lamp",
-				Slug:        "lumina-lamp",
-				Description: "Iluminación inteligente minimalista que se adapta a tu ritmo de trabajo y confort visual.",
-				Category:    "general",
-				BasePrice:   89.50,
+				Name:        "Lámpara de Escritorio Nórdica",
+				Slug:        "lampara-nordica",
+				Description: "Luz cálida/fría graduable, diseño minimalista en madera y metal con carga USB.",
+				Category:    "hogar",
+				BasePrice:   29990,
 				Stock:       25,
 				ImageURL:    "https://images.unsplash.com/photo-1534972195531-a756b1126920?q=80&w=800&auto=format&fit=crop",
 				IsActive:    true,
 			},
 			{
 				ID:          uuid.New().String(),
-				Name:        "Café Especial Geisha",
-				Slug:        "cafe-especial-geisha",
-				Description: "Variedad Geisha de alta montaña con notas florales a jazmín, bergamota y miel silvestre.",
+				Name:        "Café de Grano Especial 250g",
+				Slug:        "cafe-grano-especial",
+				Description: "Tostado fresco artesanal con notas a cacao, avellanas y miel silvestre.",
 				Category:    "cafes",
-				BasePrice:   24.90,
+				BasePrice:   12990,
 				Stock:       30,
 				ImageURL:    "https://images.unsplash.com/photo-1611854779393-1b2da9d400fe?q=80&w=800&auto=format&fit=crop",
 				IsActive:    true,
@@ -166,6 +169,6 @@ func seedInitialData(db *gorm.DB) {
 		for _, p := range demoProducts {
 			db.Create(&p)
 		}
-		log.Printf("Se sembraron %d productos de muestra.", len(demoProducts))
+		log.Printf("Se sembraron %d productos de muestra en CLP.", len(demoProducts))
 	}
 }

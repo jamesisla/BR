@@ -17,6 +17,19 @@ export interface StoreConfig {
   hero_title: string
   hero_subtitle: string
   hero_image_url?: string
+  whatsapp_number: string
+  bank_details: string
+  currency: string
+}
+
+// Chilean Peso Formatter ($49.990 CLP)
+export const formatCLP = (amount: number | string) => {
+  const num = Number(amount) || 0
+  return new Intl.NumberFormat('es-CL', {
+    style: 'currency',
+    currency: 'CLP',
+    maximumFractionDigits: 0
+  }).format(num)
 }
 
 interface CartContextType {
@@ -32,6 +45,7 @@ interface CartContextType {
   setIsSearchOpen: (isOpen: boolean) => void
   config: StoreConfig | null
   reloadConfig: () => void
+  getWhatsAppOrderURL: (deliveryType: 'envio' | 'retiro', customerInfo?: { name: string, address: string, phone?: string }) => string
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined)
@@ -47,15 +61,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     fetch('/api/settings/')
       .then(res => res.json())
       .then(data => {
-        setConfig(data)
-        if (data.primary_color) {
-          document.documentElement.style.setProperty('--primary', data.primary_color)
-        }
-        if (data.secondary_color) {
-          document.documentElement.style.setProperty('--secondary', data.secondary_color)
-        }
-        if (data.name) {
-          document.title = data.name
+        if (data) {
+          setConfig(data)
+          if (data.primary_color) {
+            document.documentElement.style.setProperty('--primary', data.primary_color)
+          }
+          if (data.secondary_color) {
+            document.documentElement.style.setProperty('--secondary', data.secondary_color)
+          }
+          if (data.name) {
+            document.title = data.name
+          }
         }
       })
       .catch(err => console.error('Error fetching settings:', err))
@@ -95,7 +111,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return [...prevCart, {
         id: product.id,
         name: product.name,
-        price: Number(product.base_price || 0),
+        price: Math.round(Number(product.base_price || 0)),
         quantity: quantity,
         image: product.image_url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=400&auto=format&fit=crop'
       }]
@@ -111,6 +127,31 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const totalItems = cart.reduce((acc, item) => acc + item.quantity, 0)
   const totalPrice = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0)
 
+  // Generate WhatsApp Order link with Chilean formatted message
+  const getWhatsAppOrderURL = (deliveryType: 'envio' | 'retiro', customerInfo?: { name: string, address: string, phone?: string }) => {
+    const rawNumber = config?.whatsapp_number || '+56912345678'
+    const phone = rawNumber.replace(/[^0-9]/g, '')
+    const storeName = config?.name || 'la tienda'
+
+    let msg = `👋 ¡Hola! Me gustaría hacer un pedido en *${storeName}*:\n\n`
+    msg += `📦 *Detalle del Pedido:*\n`
+    cart.forEach(item => {
+      msg += `• ${item.quantity}x ${item.name} (${formatCLP(item.price * item.quantity)})\n`
+    })
+    msg += `\n💰 *Total a Transferir:* ${formatCLP(totalPrice)}\n`
+    msg += `🚚 *Modalidad:* ${deliveryType === 'envio' ? 'Envío a Domicilio' : 'Retiro en Tienda'}\n`
+
+    if (customerInfo) {
+      if (customerInfo.name) msg += `👤 *Cliente:* ${customerInfo.name}\n`
+      if (customerInfo.address) msg += `📍 *Dirección/Comuna:* ${customerInfo.address}\n`
+      if (customerInfo.phone) msg += `📞 *Teléfono:* ${customerInfo.phone}\n`
+    }
+
+    msg += `\n¿Me podrías compartir los datos de transferencia bancaria para realizar el pago? ¡Muchas gracias!`
+
+    return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`
+  }
+
   return (
     <CartContext.Provider value={{ 
       cart, 
@@ -124,7 +165,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       isSearchOpen, 
       setIsSearchOpen,
       config,
-      reloadConfig: loadConfig
+      reloadConfig: loadConfig,
+      getWhatsAppOrderURL
     }}>
       {children}
     </CartContext.Provider>

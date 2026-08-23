@@ -1,50 +1,53 @@
 import React from 'react'
-import { Instagram, Facebook, Mail } from 'lucide-react'
+import { Instagram, MessageCircle, CreditCard, ShieldCheck } from 'lucide-react'
 import { useCart } from '../context/CartContext'
 
 export default function Footer() {
   const { config } = useCart()
+  const rawNumber = config?.whatsapp_number || '+56912345678'
+  const phone = rawNumber.replace(/[^0-9]/g, '')
 
   return (
-    <footer className="bg-[#111111] text-white pt-20 pb-12">
-      <div className="container">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
-          <div className="md:col-span-2">
-            <h2 className="font-serif text-3xl md:text-4xl mb-4 text-white">Eleva tu experiencia.</h2>
-            <p className="opacity-50 text-sm max-w-md mb-6 leading-relaxed">
-              Descubre nuestra selección de productos diseñados con los más altos estándares de calidad y durabilidad.
+    <footer className="bg-[#111111] text-white pt-16 pb-12">
+      <div className="container px-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-12">
+          <div>
+            <h2 className="font-serif text-2xl md:text-3xl mb-3 text-white">{config?.name || 'Tienda Demo'}</h2>
+            <p className="opacity-60 text-xs sm:text-sm max-w-sm mb-4 leading-relaxed">
+              Atención directa y personalizada. Pagos mediante transferencia bancaria y envíos a todo Chile.
             </p>
-            <div className="flex gap-3 max-w-md">
-              <input 
-                type="email" 
-                placeholder="Tu correo electrónico" 
-                className="bg-white/5 border border-white/10 px-4 py-3 text-white text-xs rounded flex-1 focus:outline-none focus:border-white/30 transition-colors" 
-              />
-              <button className="btn-primary">Suscribirme</button>
+            <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold">
+              <ShieldCheck size={16} /> Compra 100% segura y coordinada
             </div>
           </div>
 
           <div>
-            <h4 className="text-[11px] uppercase tracking-widest opacity-40 mb-6 font-bold">Navegación</h4>
-            <ul className="list-none text-xs opacity-70 flex flex-col gap-3">
-              <li><a href="/#productos" className="hover:text-white transition-colors">Catálogo Completo</a></li>
-              <li><a href="/category/accesorios" className="hover:text-white transition-colors">Accesorios</a></li>
-              <li><a href="/category/general" className="hover:text-white transition-colors">Novedades</a></li>
-            </ul>
+            <h4 className="text-[11px] uppercase tracking-widest opacity-40 mb-4 font-bold">Contacto Directo</h4>
+            <div className="flex flex-col gap-3">
+              <a 
+                href={`https://wa.me/${phone}`} 
+                target="_blank" 
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold hover:bg-emerald-600/30 transition-colors w-fit"
+              >
+                <MessageCircle size={16} /> WhatsApp: {config?.whatsapp_number || '+56912345678'}
+              </a>
+              <div className="text-xs opacity-50 flex items-center gap-2">
+                <CreditCard size={14} /> Transferencia Bancaria (CuentaRUT / Cta Corriente)
+              </div>
+            </div>
           </div>
 
           <div>
-            <h4 className="text-[11px] uppercase tracking-widest opacity-40 mb-6 font-bold">Social</h4>
-            <div className="flex gap-4 opacity-70">
-              <a href="#" className="hover:opacity-100 hover:text-secondary transition-all"><Instagram size={20} /></a>
-              <a href="#" className="hover:opacity-100 hover:text-secondary transition-all"><Facebook size={20} /></a>
-              <a href="#" className="hover:opacity-100 hover:text-secondary transition-all"><Mail size={20} /></a>
-            </div>
+            <h4 className="text-[11px] uppercase tracking-widest opacity-40 mb-4 font-bold">Información de Transferencia</h4>
+            <p className="text-xs opacity-70 bg-white/5 p-4 rounded-xl border border-white/10 font-mono whitespace-pre-line leading-relaxed">
+              {config?.bank_details || 'BancoEstado | CuentaRUT: 12.345.678-9 | Email: pagos@tienda.cl'}
+            </p>
           </div>
         </div>
 
-        <div className="pt-8 border-t border-white/5 text-center opacity-30 text-[11px] tracking-wider">
-          {config?.footer_text || '© 2026 Tienda Artisan. Todos los derechos reservados.'}
+        <div className="pt-8 border-t border-white/10 text-center opacity-40 text-[11px] tracking-wider">
+          {config?.footer_text || '© 2026 Tienda Demo. Todos los derechos reservados.'}
         </div>
       </div>
     </footer>
