@@ -25,7 +25,7 @@ func Load() *Config {
 	dbURL := getEnv("DATABASE_URL", "ecommerce.db")
 	backendURL := getEnv("BACKEND_URL", "")
 	frontendURL := getEnv("FRONTEND_URL", "")
-	adminPass := getEnv("ADMIN_PASSWORD", "admin123")
+	adminPass := getEnv("ADMIN_PASSWORD", "Malulo23")
 	mpToken := getEnv("MP_ACCESS_TOKEN", "TEST-6447849483321584-051015-8d598585474747474747474747474747-000000000")
 	uploadDir := getEnv("UPLOAD_DIR", "./uploads")
 	ginMode := getEnv("GIN_MODE", "release")

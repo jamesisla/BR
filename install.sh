@@ -113,7 +113,7 @@ if [ ! -f "$PROJECT_DIR/backend/.env" ]; then
 PORT=80
 GIN_MODE=release
 DATABASE_URL=$PROJECT_DIR/backend/ecommerce.db
-ADMIN_PASSWORD=admin123
+ADMIN_PASSWORD=Malulo23
 MP_ACCESS_TOKEN=TEST-6447849483321584-051015-8d598585474747474747474747474747-000000000
 UPLOAD_DIR=$PROJECT_DIR/backend/uploads
 DOMAIN=bere.vnd.mom
@@ -176,7 +176,7 @@ echo -e "${GREEN}===============================================================
 echo -e "  🌐 Dominio Seguro (HTTPS): https://bere.vnd.mom/"
 echo -e "  🔐 Admin con Dominio:     https://bere.vnd.mom/admin"
 echo -e "  🌐 Acceso por IP:         http://${PUBLIC_IP}/"
-echo -e "  🔑 Contraseña Master:     admin123"
+echo -e "  🔑 Contraseña Master:     Malulo23"
 echo -e "  📊 Consumo de RAM:       ~15 MB (1 solo servicio activo)"
 echo -e "\n  Para ver logs en tiempo real:"
 echo -e "  ${YELLOW}sudo journalctl -u tienda -f${NC}\n"
