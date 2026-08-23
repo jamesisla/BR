@@ -183,6 +183,12 @@ func setupEmbeddedSPA(r *gin.Engine) {
 
 	httpFS := http.FS(distFS)
 
+	// Leer index.html en memoria para servir directamente sin redirecciones 301
+	indexHTML, err := fs.ReadFile(distFS, "index.html")
+	if err != nil {
+		log.Printf("Aviso: No se pudo leer index.html embebido: %v", err)
+	}
+
 	r.NoRoute(func(c *gin.Context) {
 		reqPath := strings.TrimPrefix(c.Request.URL.Path, "/")
 
@@ -199,13 +205,17 @@ func setupEmbeddedSPA(r *gin.Engine) {
 				stat, statErr := file.Stat()
 				file.Close()
 				if statErr == nil && !stat.IsDir() {
+					if strings.HasPrefix(reqPath, "assets/") {
+						c.Header("Cache-Control", "public, max-age=31536000, immutable")
+					}
 					c.FileFromFS(reqPath, httpFS)
 					return
 				}
 			}
 		}
 
-		// Fallback para SPA (Single Page Application) -> index.html
-		c.FileFromFS("index.html", httpFS)
+		// Servir index.html directamente con 200 OK (sin redirecciones)
+		c.Header("Cache-Control", "no-cache")
+		c.Data(http.StatusOK, "text/html; charset=utf-8", indexHTML)
 	})
 }
