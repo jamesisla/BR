@@ -274,13 +274,15 @@ export default function AdminDashboardPage() {
         const data = await response.json()
         setProductForm(prev => ({ ...prev, image_url: data.url }))
       } else {
-        alert('Error al subir imagen')
+        const errData = await response.json().catch(() => ({}))
+        alert('Error al subir imagen: ' + (errData.detail || response.statusText))
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error)
-      alert('Error de conexión al subir imagen')
+      alert('Error de conexión al subir imagen: ' + error.message)
     } finally {
       setUploading(false)
+      e.target.value = ''
     }
   }
 
@@ -302,13 +304,15 @@ export default function AdminDashboardPage() {
         const data = await response.json()
         setStoreSettings(prev => ({ ...prev, logo_url: data.url }))
       } else {
-        alert('Error al subir logo')
+        const errData = await response.json().catch(() => ({}))
+        alert('Error al subir logo: ' + (errData.detail || response.statusText))
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error)
-      alert('Error al subir logo')
+      alert('Error de conexión al subir logo: ' + error.message)
     } finally {
       setLogoUploading(false)
+      e.target.value = ''
     }
   }
 
@@ -330,13 +334,15 @@ export default function AdminDashboardPage() {
         const data = await response.json()
         setStoreSettings(prev => ({ ...prev, hero_image_url: data.url }))
       } else {
-        alert('Error al subir portada')
+        const errData = await response.json().catch(() => ({}))
+        alert('Error al subir portada: ' + (errData.detail || response.statusText))
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error)
-      alert('Error al subir portada')
+      alert('Error de conexión al subir portada: ' + error.message)
     } finally {
       setHeroUploading(false)
+      e.target.value = ''
     }
   }
 
@@ -566,21 +572,17 @@ export default function AdminDashboardPage() {
                                 )}
                              </div>
                              <div className="flex-1">
-                                <input 
-                                  type="file" 
-                                  ref={logoInputRef}
-                                  onChange={handleLogoUpload}
-                                  className="hidden" 
-                                  accept="image/*"
-                                />
-                                <button 
-                                  type="button" 
-                                  onClick={() => logoInputRef.current?.click()}
-                                  className="px-4 py-2.5 bg-slate-900 text-white text-xs font-bold rounded-xl hover:bg-slate-800 transition-all flex items-center gap-2"
-                                >
+                                <label className="cursor-pointer px-4 py-2.5 bg-slate-900 text-white text-xs font-bold rounded-xl hover:bg-slate-800 transition-all inline-flex items-center gap-2 shadow-md">
+                                  <input 
+                                    type="file" 
+                                    onChange={handleLogoUpload}
+                                    className="sr-only" 
+                                    accept="image/*"
+                                    disabled={logoUploading}
+                                  />
                                   {logoUploading ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
-                                  Subir Logo (Foto/Galería)
-                                </button>
+                                  <span>{logoUploading ? 'Subiendo...' : 'Subir Logo (Foto/Galería)'}</span>
+                                </label>
                              </div>
                           </div>
                        </div>
@@ -588,25 +590,22 @@ export default function AdminDashboardPage() {
                        {/* Portada Hero Banner */}
                        <div className="pt-4 border-t border-slate-100">
                           <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-2">Imagen de Portada (Hero Banner)</label>
-                          <div 
-                            className="w-full h-36 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl overflow-hidden cursor-pointer hover:border-slate-400 transition-all relative flex items-center justify-center mb-3"
-                            onClick={() => heroInputRef.current?.click()}
-                          >
+                          <label className="cursor-pointer block w-full h-36 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl overflow-hidden hover:border-slate-400 transition-all relative mb-3">
                              {storeSettings.hero_image_url ? (
                                <img src={storeSettings.hero_image_url} className="w-full h-full object-cover" />
                              ) : (
-                               <div className="flex flex-col items-center gap-1.5 text-slate-400">
+                               <div className="flex flex-col items-center justify-center h-full gap-1.5 text-slate-400">
                                   <Camera size={28} />
-                                  <span className="text-[11px] font-bold uppercase tracking-wider">Subir Foto de Portada</span>
-                                </div>
+                                  <span className="text-[11px] font-bold uppercase tracking-wider">Toca para Subir Foto de Portada</span>
+                               </div>
                              )}
-                             <input type="file" ref={heroInputRef} className="hidden" onChange={handleHeroUpload} accept="image/*" />
+                             <input type="file" className="sr-only" onChange={handleHeroUpload} accept="image/*" disabled={heroUploading} />
                              {heroUploading && (
                                <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
                                   <Loader2 className="animate-spin text-slate-900" />
                                </div>
                              )}
-                          </div>
+                          </label>
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                              <div>
@@ -780,25 +779,21 @@ export default function AdminDashboardPage() {
                  <div>
                     <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-1.5">Foto del Producto</label>
                     <div className="flex gap-3 items-center">
-                       <div className="w-20 h-24 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl flex items-center justify-center overflow-hidden flex-shrink-0">
+                       <label className="cursor-pointer w-20 h-24 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl flex items-center justify-center overflow-hidden flex-shrink-0 relative hover:border-slate-400 transition-all">
                           {productForm.image_url ? (
                             <img src={productForm.image_url} className="w-full h-full object-cover" />
                           ) : (
                             <Camera className="text-slate-300" size={28} />
                           )}
-                       </div>
+                          <input type="file" onChange={handleImageUpload} className="sr-only" accept="image/*" disabled={uploading} />
+                       </label>
 
                        <div className="flex-1 space-y-2">
-                          <input type="file" ref={fileInputRef} onChange={handleImageUpload} className="hidden" accept="image/*" />
-                          <button 
-                            type="button"
-                            disabled={uploading}
-                            onClick={() => fileInputRef.current?.click()}
-                            className="w-full py-2.5 px-3 bg-slate-900 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-slate-800 shadow-md"
-                          >
+                          <label className="cursor-pointer w-full py-2.5 px-3 bg-slate-900 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-slate-800 shadow-md">
+                            <input type="file" onChange={handleImageUpload} className="sr-only" accept="image/*" disabled={uploading} />
                             {uploading ? <Loader2 size={16} className="animate-spin" /> : <Camera size={16} />}
-                            Subir Foto (Cámara o Galería)
-                          </button>
+                            <span>{uploading ? 'Subiendo foto...' : 'Tomar Foto / Elegir Galería'}</span>
+                          </label>
                           
                           <input 
                              type="text" 
