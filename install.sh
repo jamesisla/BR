@@ -130,7 +130,7 @@ npm run build
 cd "$PROJECT_DIR/backend"
 echo "Compilando ejecutable Go Single Binary (con frontend embebido)..."
 go mod tidy
-CGO_ENABLED=0 go build -ldflags="-s -w" -o "$PROJECT_DIR/backend/server" ./cmd/server
+CGO_ENABLED=0 go build -ldflags="-s -w" -o "$PROJECT_DIR/backend/server" .
 chmod +x "$PROJECT_DIR/backend/server"
 echo -e "${GREEN}✅ Binario Go compilado exitosamente.${NC}"
 

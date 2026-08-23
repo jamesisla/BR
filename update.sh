@@ -23,7 +23,7 @@ npm run build
 echo -e "\n${YELLOW}🐹 [2/2] Compilando Binario Go Single Binary...${NC}"
 cd "$PROJECT_DIR/backend"
 go mod tidy
-CGO_ENABLED=0 go build -ldflags="-s -w" -o "$PROJECT_DIR/backend/server" ./cmd/server
+CGO_ENABLED=0 go build -ldflags="-s -w" -o "$PROJECT_DIR/backend/server" .
 chmod +x "$PROJECT_DIR/backend/server"
 
 echo -e "\n${YELLOW}🚀 Reiniciando servicio 'tienda.service'...${NC}"
