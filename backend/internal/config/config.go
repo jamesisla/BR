@@ -15,6 +15,7 @@ type Config struct {
 	MPAccessToken string
 	UploadDir     string
 	GinMode       string
+	Domain        string
 }
 
 func Load() *Config {
@@ -28,6 +29,7 @@ func Load() *Config {
 	mpToken := getEnv("MP_ACCESS_TOKEN", "TEST-6447849483321584-051015-8d598585474747474747474747474747-000000000")
 	uploadDir := getEnv("UPLOAD_DIR", "./uploads")
 	ginMode := getEnv("GIN_MODE", "release")
+	domain := getEnv("DOMAIN", "")
 
 	return &Config{
 		Port:          port,
@@ -38,6 +40,7 @@ func Load() *Config {
 		MPAccessToken: mpToken,
 		UploadDir:     uploadDir,
 		GinMode:       ginMode,
+		Domain:        domain,
 	}
 }
 

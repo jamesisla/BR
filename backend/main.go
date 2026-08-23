@@ -8,12 +8,14 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/acme/autocert"
 
 	"tienda-backend/internal/config"
 	"tienda-backend/internal/database"
@@ -51,6 +53,9 @@ func main() {
 	r := gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
 
+	// Aumentar memoria para fotos pesadas de smartphones (32 MB)
+	r.MaxMultipartMemory = 32 << 20
+
 	// 5. Setup CORS
 	corsConfig := cors.Config{
 		AllowAllOrigins:  true,
@@ -67,10 +72,14 @@ func main() {
 	if uploadDir == "" {
 		uploadDir = "./uploads"
 	}
-	_ = os.MkdirAll(uploadDir, 0755)
+	absUploadDir, err := filepath.Abs(uploadDir)
+	if err != nil {
+		absUploadDir = uploadDir
+	}
+	_ = os.MkdirAll(absUploadDir, 0777)
 
-	r.Static("/static/uploads", uploadDir)
-	r.Static("/uploads", uploadDir)
+	r.Static("/static/uploads", absUploadDir)
+	r.Static("/uploads", absUploadDir)
 
 	// 7. Register API Routes
 	api := r.Group("/api")
@@ -80,6 +89,7 @@ func main() {
 			c.JSON(http.StatusOK, gin.H{
 				"status":  "ok",
 				"service": "tienda-single-binary",
+				"domain":  cfg.Domain,
 				"time":    time.Now().Format(time.RFC3339),
 			})
 		})
@@ -134,47 +144,96 @@ func main() {
 	}
 
 	// 8. Setup Embedded Frontend SPA
-	setupEmbeddedSPA(r)
+	setupEmbeddedSPA(r, absUploadDir)
 
-	// 9. Start HTTP Server with Graceful Shutdown
-	port := cfg.Port
-	if port == "" {
-		port = "80"
-	}
-	addr := ":" + port
+	// 9. Start HTTP/HTTPS Server
+	if cfg.Domain != "" {
+		// Modo Producción con Dominio y Certificado SSL Let's Encrypt Automático
+		log.Printf("🔐 Configurando certificado SSL automático (Let's Encrypt) para el dominio: %s", cfg.Domain)
+		_ = os.MkdirAll("./certs", 0700)
 
-	srv := &http.Server{
-		Addr:         addr,
-		Handler:      r,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
-	}
-
-	go func() {
-		log.Printf("🚀 Tienda Artisan (Single Binary) iniciada en http://0.0.0.0%s", addr)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Error al iniciar el servidor en el puerto %s: %v", port, err)
+		certManager := autocert.Manager{
+			Prompt:     autocert.AcceptTOS,
+			HostPolicy: autocert.HostWhitelist(cfg.Domain),
+			Cache:      autocert.DirCache("./certs"),
 		}
-	}()
 
-	// Graceful shutdown
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	log.Println("Apagando servidor de forma segura...")
+		// Servidor HTTP en puerto 80 para redirigir a HTTPS y responder validación ACME
+		go func() {
+			log.Printf("🌐 Servidor HTTP :80 activo (Redirigiendo automáticamente a https://%s)", cfg.Domain)
+			if err := http.ListenAndServe(":80", certManager.HTTPHandler(nil)); err != nil {
+				log.Printf("Aviso HTTP redirect :80: %v", err)
+			}
+		}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+		// Servidor HTTPS seguro en puerto 443
+		httpsSrv := &http.Server{
+			Addr:         ":443",
+			Handler:      r,
+			TLSConfig:    certManager.TLSConfig(),
+			ReadTimeout:  15 * time.Second,
+			WriteTimeout: 15 * time.Second,
+			IdleTimeout:  60 * time.Second,
+		}
 
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatalf("Forzado de apagado del servidor: %v", err)
+		go func() {
+			log.Printf("🚀 Tienda Segura HTTPS iniciada en https://%s", cfg.Domain)
+			if err := httpsSrv.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+				log.Fatalf("Error en servidor HTTPS :443: %v", err)
+			}
+		}()
+
+		// Graceful shutdown
+		quit := make(chan os.Signal, 1)
+		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+		<-quit
+		log.Println("Apagando servidor de forma segura...")
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = httpsSrv.Shutdown(ctx)
+		log.Println("Servidor detenido correctamente.")
+	} else {
+		// Modo HTTP Estándar (IP directa)
+		port := cfg.Port
+		if port == "" {
+			port = "80"
+		}
+		addr := ":" + port
+
+		srv := &http.Server{
+			Addr:         addr,
+			Handler:      r,
+			ReadTimeout:  15 * time.Second,
+			WriteTimeout: 15 * time.Second,
+			IdleTimeout:  60 * time.Second,
+		}
+
+		go func() {
+			log.Printf("🚀 Tienda Artisan iniciada en http://0.0.0.0%s", addr)
+			if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Fatalf("Error al iniciar el servidor en el puerto %s: %v", port, err)
+			}
+		}()
+
+		// Graceful shutdown
+		quit := make(chan os.Signal, 1)
+		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+		<-quit
+		log.Println("Apagando servidor de forma segura...")
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := srv.Shutdown(ctx); err != nil {
+			log.Fatalf("Forzado de apagado del servidor: %v", err)
+		}
+
+		log.Println("Servidor detenido correctamente.")
 	}
-
-	log.Println("Servidor detenido correctamente.")
 }
 
-func setupEmbeddedSPA(r *gin.Engine) {
+func setupEmbeddedSPA(r *gin.Engine, absUploadDir string) {
 	distFS, err := fs.Sub(embeddedDist, "dist")
 	if err != nil {
 		log.Printf("Aviso: No se pudo extraer sub-sistema dist: %v", err)
@@ -192,13 +251,31 @@ func setupEmbeddedSPA(r *gin.Engine) {
 	r.NoRoute(func(c *gin.Context) {
 		reqPath := strings.TrimPrefix(c.Request.URL.Path, "/")
 
-		// Si es una ruta de API inexistente, responder 404 JSON
+		// 1. Si es una ruta de subidas en disco, servir archivo del disco directamente
+		if strings.HasPrefix(reqPath, "static/uploads/") {
+			fileName := strings.TrimPrefix(reqPath, "static/uploads/")
+			diskFile := filepath.Join(absUploadDir, fileName)
+			if _, err := os.Stat(diskFile); err == nil {
+				c.File(diskFile)
+				return
+			}
+		}
+		if strings.HasPrefix(reqPath, "uploads/") {
+			fileName := strings.TrimPrefix(reqPath, "uploads/")
+			diskFile := filepath.Join(absUploadDir, fileName)
+			if _, err := os.Stat(diskFile); err == nil {
+				c.File(diskFile)
+				return
+			}
+		}
+
+		// 2. Si es una ruta de API inexistente, responder 404 JSON
 		if strings.HasPrefix(c.Request.URL.Path, "/api/") || c.Request.URL.Path == "/api" {
 			c.JSON(http.StatusNotFound, gin.H{"detail": "Endpoint de API no encontrado"})
 			return
 		}
 
-		// Si es un archivo estático existente (JS, CSS, imágenes, etc.)
+		// 3. Si es un archivo estático existente en dist (JS, CSS, imágenes embebidas)
 		if reqPath != "" {
 			file, err := distFS.Open(reqPath)
 			if err == nil {
@@ -214,7 +291,7 @@ func setupEmbeddedSPA(r *gin.Engine) {
 			}
 		}
 
-		// Servir index.html directamente con 200 OK (sin redirecciones)
+		// 4. Servir index.html directamente con 200 OK para navegación SPA
 		c.Header("Cache-Control", "no-cache")
 		c.Data(http.StatusOK, "text/html; charset=utf-8", indexHTML)
 	})

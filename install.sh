@@ -116,6 +116,7 @@ DATABASE_URL=$PROJECT_DIR/backend/ecommerce.db
 ADMIN_PASSWORD=admin123
 MP_ACCESS_TOKEN=TEST-6447849483321584-051015-8d598585474747474747474747474747-000000000
 UPLOAD_DIR=$PROJECT_DIR/backend/uploads
+DOMAIN=bere.vnd.mom
 EOF
     fi
 fi
@@ -134,7 +135,7 @@ CGO_ENABLED=0 go build -ldflags="-s -w" -o "$PROJECT_DIR/backend/server" .
 chmod +x "$PROJECT_DIR/backend/server"
 echo -e "${GREEN}✅ Binario Go compilado exitosamente.${NC}"
 
-# 8. Detener servicios anteriores (Caddy / Node) si existían
+# 8. Detener servicios anteriores si existían
 systemctl stop caddy tienda-backend tienda-frontend 2>/dev/null || true
 systemctl disable caddy tienda-backend tienda-frontend 2>/dev/null || true
 
@@ -149,13 +150,10 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=$PROJECT_DIR/backend
+EnvironmentFile=-$PROJECT_DIR/backend/.env
 ExecStart=$PROJECT_DIR/backend/server
 Restart=always
 RestartSec=3
-Environment=PORT=80
-Environment=GIN_MODE=release
-Environment=DATABASE_URL=$PROJECT_DIR/backend/ecommerce.db
-Environment=UPLOAD_DIR=$PROJECT_DIR/backend/uploads
 LimitNOFILE=65535
 
 [Install]
@@ -167,7 +165,7 @@ systemctl daemon-reload
 systemctl enable tienda.service
 systemctl restart tienda.service
 
-# Esperar 1 segundo y verificar salud
+# Esperar 2 segundos
 sleep 2
 
 PUBLIC_IP=$(curl -s --connect-timeout 2 ifconfig.me 2>/dev/null || echo "TU_IP_PUBLICA")
@@ -175,9 +173,10 @@ PUBLIC_IP=$(curl -s --connect-timeout 2 ifconfig.me 2>/dev/null || echo "TU_IP_P
 echo -e "\n${GREEN}======================================================================${NC}"
 echo -e "${GREEN}  🎉 ¡INSTALACIÓN COMPLETADA CON ÉXITO!                             ${NC}"
 echo -e "${GREEN}======================================================================${NC}"
-echo -e "  🌐 Tienda Pública:      http://${PUBLIC_IP}/"
-echo -e "  🔐 Panel Administrador:  http://${PUBLIC_IP}/admin"
-echo -e "  🔑 Contraseña Master:    admin123"
-echo -e "  📊 Consumo de RAM:      ~15 MB (1 solo servicio activo)"
+echo -e "  🌐 Dominio Seguro (HTTPS): https://bere.vnd.mom/"
+echo -e "  🔐 Admin con Dominio:     https://bere.vnd.mom/admin"
+echo -e "  🌐 Acceso por IP:         http://${PUBLIC_IP}/"
+echo -e "  🔑 Contraseña Master:     admin123"
+echo -e "  📊 Consumo de RAM:       ~15 MB (1 solo servicio activo)"
 echo -e "\n  Para ver logs en tiempo real:"
 echo -e "  ${YELLOW}sudo journalctl -u tienda -f${NC}\n"

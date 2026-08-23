@@ -198,11 +198,11 @@ func (h *ProductHandler) DeleteProduct(c *gin.Context) {
 	})
 }
 
-// UploadImage handles multipart image file uploads
+// UploadImage handles multipart image file uploads from smartphones and desktop
 func (h *ProductHandler) UploadImage(c *gin.Context) {
 	file, err := c.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "No se recibió ningún archivo"})
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "No se recibió ningún archivo de imagen: " + err.Error()})
 		return
 	}
 
@@ -210,15 +210,23 @@ func (h *ProductHandler) UploadImage(c *gin.Context) {
 	if uploadDir == "" {
 		uploadDir = "./uploads"
 	}
+	absUploadDir, err := filepath.Abs(uploadDir)
+	if err != nil {
+		absUploadDir = uploadDir
+	}
 
-	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Error al crear directorio de subidas"})
+	if err := os.MkdirAll(absUploadDir, 0777); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Error al crear directorio de subidas: " + err.Error()})
 		return
 	}
 
 	// Safe unique filename
-	ext := filepath.Ext(file.Filename)
-	base := strings.TrimSuffix(filepath.Base(file.Filename), ext)
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	if ext == "" || ext == "." {
+		ext = ".jpg"
+	}
+
+	base := strings.TrimSuffix(filepath.Base(file.Filename), filepath.Ext(file.Filename))
 	baseClean := strings.Map(func(r rune) rune {
 		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_' {
 			return r
@@ -226,8 +234,12 @@ func (h *ProductHandler) UploadImage(c *gin.Context) {
 		return '_'
 	}, base)
 
+	if baseClean == "" || baseClean == "_" {
+		baseClean = "foto"
+	}
+
 	filename := fmt.Sprintf("%d_%s%s", time.Now().UnixNano()/1e6, baseClean, ext)
-	dst := filepath.Join(uploadDir, filename)
+	dst := filepath.Join(absUploadDir, filename)
 
 	if err := c.SaveUploadedFile(file, dst); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Error al guardar el archivo: " + err.Error()})
@@ -235,9 +247,9 @@ func (h *ProductHandler) UploadImage(c *gin.Context) {
 	}
 
 	backendURL := strings.TrimRight(h.cfg.BackendURL, "/")
-	fileURL := fmt.Sprintf("%s/static/uploads/%s", backendURL, filename)
-	if backendURL == "" {
-		fileURL = fmt.Sprintf("/static/uploads/%s", filename)
+	fileURL := fmt.Sprintf("/static/uploads/%s", filename)
+	if backendURL != "" {
+		fileURL = fmt.Sprintf("%s/static/uploads/%s", backendURL, filename)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
