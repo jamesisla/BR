@@ -32,6 +32,16 @@ export default function Footer() {
               >
                 <MessageCircle size={16} /> WhatsApp: {config?.whatsapp_number || '+56912345678'}
               </a>
+              {config?.instagram_url && (
+                <a 
+                  href={config.instagram_url.startsWith('http') ? config.instagram_url : `https://${config.instagram_url}`} 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-pink-600/20 text-pink-400 border border-pink-500/30 rounded-xl text-xs font-bold hover:bg-pink-600/30 transition-colors w-fit"
+                >
+                  <Instagram size={16} /> Síguenos en Instagram
+                </a>
+              )}
               <div className="text-xs opacity-50 flex items-center gap-2">
                 <CreditCard size={14} /> Transferencia Bancaria (CuentaRUT / Cta Corriente)
               </div>

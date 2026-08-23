@@ -993,6 +993,30 @@ export default function AdminDashboardPage() {
                           </div>
                        </div>
 
+                       {/* Footer Copyright Text */}
+                       <div className="pt-4 border-t border-slate-100">
+                          <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-1">Texto del Pie de Página (Footer / Copyright)</label>
+                          <input 
+                            type="text" 
+                            value={storeSettings.footer_text}
+                            onChange={(e) => setStoreSettings({...storeSettings, footer_text: e.target.value})}
+                            placeholder="© 2026 Mi Tienda. Todos los derechos reservados."
+                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                          />
+                       </div>
+
+                       {/* Instagram URL */}
+                       <div className="pt-2">
+                          <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-1">Enlace de Instagram (Opcional)</label>
+                          <input 
+                            type="text" 
+                            value={storeSettings.instagram_url}
+                            onChange={(e) => setStoreSettings({...storeSettings, instagram_url: e.target.value})}
+                            placeholder="https://instagram.com/tutienda"
+                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                          />
+                       </div>
+
                        {/* Colores */}
                        <div className="grid grid-cols-2 gap-3 pt-2">
                          <div>
