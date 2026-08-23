@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"embed"
+	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
@@ -148,8 +149,60 @@ func main() {
 
 	// 9. Start HTTP/HTTPS Server
 	if cfg.Domain != "" {
-		// Modo Producción con Dominio y Certificado SSL Let's Encrypt Automático
-		log.Printf("🔐 Configurando certificado SSL automático (Let's Encrypt) para el dominio: %s", cfg.Domain)
+		// Verificar si existen certificados generados por Certbot en /etc/letsencrypt/live/<domain>/
+		certbotFullchain := fmt.Sprintf("/etc/letsencrypt/live/%s/fullchain.pem", cfg.Domain)
+		certbotPrivkey := fmt.Sprintf("/etc/letsencrypt/live/%s/privkey.pem", cfg.Domain)
+
+		_, errCert := os.Stat(certbotFullchain)
+		_, errKey := os.Stat(certbotPrivkey)
+		hasCertbot := (errCert == nil && errKey == nil)
+
+		if hasCertbot {
+			log.Printf("🔐 Usando certificados SSL existentes de Certbot (/etc/letsencrypt/live/%s)", cfg.Domain)
+
+			// Servidor HTTP en puerto 80 para redirigir a HTTPS
+			go func() {
+				log.Printf("🌐 Servidor HTTP :80 activo (Redirigiendo permanentemente a https://%s)", cfg.Domain)
+				redirectHandler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+					target := "https://" + cfg.Domain + req.URL.RequestURI()
+					http.Redirect(w, req, target, http.StatusMovedPermanently)
+				})
+				if err := http.ListenAndServe(":80", redirectHandler); err != nil {
+					log.Printf("Aviso HTTP redirect :80: %v", err)
+				}
+			}()
+
+			// Servidor HTTPS seguro en puerto 443 con archivos de Certbot
+			httpsSrv := &http.Server{
+				Addr:         ":443",
+				Handler:      r,
+				ReadTimeout:  15 * time.Second,
+				WriteTimeout: 15 * time.Second,
+				IdleTimeout:  60 * time.Second,
+			}
+
+			go func() {
+				log.Printf("🚀 Tienda Segura HTTPS (Certbot) iniciada en https://%s", cfg.Domain)
+				if err := httpsSrv.ListenAndServeTLS(certbotFullchain, certbotPrivkey); err != nil && err != http.ErrServerClosed {
+					log.Fatalf("Error en servidor HTTPS :443: %v", err)
+				}
+			}()
+
+			// Graceful shutdown
+			quit := make(chan os.Signal, 1)
+			signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+			<-quit
+			log.Println("Apagando servidor de forma segura...")
+
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_ = httpsSrv.Shutdown(ctx)
+			log.Println("Servidor detenido correctamente.")
+			return
+		}
+
+		// Fallback: Autocert (Let's Encrypt automático sin Certbot)
+		log.Printf("🔐 Configurando certificado SSL automático (Let's Encrypt Autocert) para: %s", cfg.Domain)
 		_ = os.MkdirAll("./certs", 0700)
 
 		certManager := autocert.Manager{
@@ -193,6 +246,7 @@ func main() {
 		defer cancel()
 		_ = httpsSrv.Shutdown(ctx)
 		log.Println("Servidor detenido correctamente.")
+		return
 	} else {
 		// Modo HTTP Estándar (IP directa)
 		port := cfg.Port
