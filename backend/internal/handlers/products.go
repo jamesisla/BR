@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -200,8 +201,11 @@ func (h *ProductHandler) DeleteProduct(c *gin.Context) {
 
 // UploadImage handles multipart image file uploads from smartphones and desktop
 func (h *ProductHandler) UploadImage(c *gin.Context) {
+	log.Printf("📥 [UPLOAD] Solicitud de subida de imagen recibida desde %s", c.ClientIP())
+
 	file, err := c.FormFile("file")
 	if err != nil {
+		log.Printf("❌ [UPLOAD ERROR] No se pudo leer el archivo del formulario: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "No se recibió ningún archivo de imagen: " + err.Error()})
 		return
 	}
@@ -216,9 +220,11 @@ func (h *ProductHandler) UploadImage(c *gin.Context) {
 	}
 
 	if err := os.MkdirAll(absUploadDir, 0777); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Error al crear directorio de subidas: " + err.Error()})
+		log.Printf("❌ [UPLOAD ERROR] No se pudo crear directorio %s: %v", absUploadDir, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": fmt.Sprintf("Error al crear directorio (%s): %v", absUploadDir, err)})
 		return
 	}
+	_ = os.Chmod(absUploadDir, 0777)
 
 	// Safe unique filename
 	ext := strings.ToLower(filepath.Ext(file.Filename))
@@ -241,13 +247,16 @@ func (h *ProductHandler) UploadImage(c *gin.Context) {
 	filename := fmt.Sprintf("%d_%s%s", time.Now().UnixNano()/1e6, baseClean, ext)
 	dst := filepath.Join(absUploadDir, filename)
 
+	log.Printf("💾 [UPLOAD] Guardando archivo '%s' (%.2f KB) en: %s", file.Filename, float64(file.Size)/1024.0, dst)
+
 	if err := c.SaveUploadedFile(file, dst); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Error al guardar el archivo en el servidor: " + err.Error()})
+		log.Printf("❌ [UPLOAD ERROR] No se pudo escribir en disco (%s): %v", dst, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": fmt.Sprintf("Error al guardar archivo en disco (%s): %v", dst, err)})
 		return
 	}
 
-	// Asegurar permisos de lectura para el servidor web
-	_ = os.Chmod(dst, 0644)
+	// Asegurar permisos universales de lectura
+	_ = os.Chmod(dst, 0666)
 
 	backendURL := strings.TrimRight(h.cfg.BackendURL, "/")
 	fileURL := fmt.Sprintf("/static/uploads/%s", filename)
@@ -255,9 +264,11 @@ func (h *ProductHandler) UploadImage(c *gin.Context) {
 		fileURL = fmt.Sprintf("%s/static/uploads/%s", backendURL, filename)
 	}
 
+	log.Printf("✅ [UPLOAD SUCCESS] Guardado exitoso. URL pública asignada: %s", fileURL)
+
 	c.JSON(http.StatusOK, gin.H{
-		"url": fileURL,
+		"url":      fileURL,
 		"filename": filename,
-		"size": file.Size,
+		"size":     file.Size,
 	})
 }

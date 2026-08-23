@@ -86,13 +86,15 @@ func main() {
 		diskPath := filepath.Join(absUploadDir, cleanPath)
 
 		if info, err := os.Stat(diskPath); err == nil && !info.IsDir() {
+			log.Printf("🖼️  [IMAGE SERVED] 200 OK: %s (%d bytes)", cleanPath, info.Size())
 			c.Header("Cache-Control", "public, max-age=86400")
 			c.Header("Access-Control-Allow-Origin", "*")
 			c.File(diskPath)
 			return
 		}
 
-		c.JSON(http.StatusNotFound, gin.H{"detail": "Imagen no encontrada"})
+		log.Printf("⚠️  [IMAGE NOT FOUND] 404: %s (Buscado en disco: %s)", cleanPath, diskPath)
+		c.JSON(http.StatusNotFound, gin.H{"detail": "Imagen no encontrada en el servidor"})
 	}
 
 	r.GET("/static/uploads/*filepath", serveUploadedFile)
@@ -103,13 +105,50 @@ func main() {
 	// 7. Register API Routes
 	api := r.Group("/api")
 	{
-		// Health check
+		// Health check general
 		api.GET("/health", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{
-				"status":  "ok",
-				"service": "tienda-single-binary",
-				"domain":  cfg.Domain,
-				"time":    time.Now().Format(time.RFC3339),
+				"status":     "ok",
+				"service":    "tienda-single-binary",
+				"domain":     cfg.Domain,
+				"upload_dir": absUploadDir,
+				"time":       time.Now().Format(time.RFC3339),
+			})
+		})
+
+		// Diagnóstico específico de permisos de subida de imágenes
+		api.GET("/health/uploads", func(c *gin.Context) {
+			testFile := filepath.Join(absUploadDir, ".write_test_"+time.Now().Format("150405"))
+			writeErr := os.WriteFile(testFile, []byte("test-ok"), 0666)
+			if writeErr == nil {
+				_ = os.Remove(testFile)
+			}
+
+			entries, _ := os.ReadDir(absUploadDir)
+			fileList := []gin.H{}
+			for _, e := range entries {
+				if strings.HasPrefix(e.Name(), ".") {
+					continue
+				}
+				info, _ := e.Info()
+				size := int64(0)
+				if info != nil {
+					size = info.Size()
+				}
+				fileList = append(fileList, gin.H{
+					"name": e.Name(),
+					"size": size,
+					"url":  "/static/uploads/" + e.Name(),
+				})
+			}
+
+			c.JSON(http.StatusOK, gin.H{
+				"status":       "ok",
+				"upload_dir":   absUploadDir,
+				"writable":     writeErr == nil,
+				"write_error":  fmt.Sprintf("%v", writeErr),
+				"total_files":  len(fileList),
+				"recent_files": fileList,
 			})
 		})
 
