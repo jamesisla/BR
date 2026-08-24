@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <!-- Vibrant Modern Gradient -->
+    <linearGradient id="bodyGrad" x1="10" y1="14" x2="54" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#6366F1"/>
+      <stop offset="50%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#EC4899"/>
+    </linearGradient>
+
+    <linearGradient id="handleGrad" x1="20" y1="6" x2="44" y2="24" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#4F46E5"/>
+      <stop offset="100%" stop-color="#7C3AED"/>
+    </linearGradient>
+
+    <linearGradient id="starGrad" x1="42" y1="18" x2="54" y2="30" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FDE047"/>
+      <stop offset="100%" stop-color="#F59E0B"/>
+    </linearGradient>
+
+    <!-- Shadow filter for 3D tactile pop -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="3" stdDeviation="2.5" flood-color="#4338CA" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Handle -->
+  <path d="M22 21V15C22 9.477 26.477 5 32 5C37.523 5 42 9.477 42 15V21" 
+        stroke="url(#handleGrad)" 
+        stroke-width="5" 
+        stroke-linecap="round"/>
+
+  <!-- Bag Body -->
+  <path d="M13 19C13 17.895 13.895 17 15 17H49C50.105 17 51 17.895 51 19L55.5 51C55.5 54.866 52.366 58 48.5 58H15.5C11.634 58 8.5 54.866 8.5 51L13 19Z" 
+        fill="url(#bodyGrad)" 
+        filter="url(#shadow)"/>
+
+  <!-- Cheerful Smile Curve -->
+  <path d="M23 37C25.5 43.5 38.5 43.5 41 37" 
+        stroke="#FFFFFF" 
+        stroke-width="3.5" 
+        stroke-linecap="round"/>
+
+  <!-- Rosy Cheeks -->
+  <circle cx="20" cy="36" r="2.2" fill="#FBCFE8" opacity="0.9"/>
+  <circle cx="44" cy="36" r="2.2" fill="#FBCFE8" opacity="0.9"/>
+
+  <!-- Playful Shopping Sparkle Star -->
+  <path d="M47 18L48.2 21.8L52 23L48.2 24.2L47 28L45.8 24.2L42 23L45.8 21.8L47 18Z" 
+        fill="url(#starGrad)"/>
+</svg>

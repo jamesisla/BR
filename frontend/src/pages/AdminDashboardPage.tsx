@@ -179,6 +179,11 @@ export default function AdminDashboardPage() {
     }
   }, [])
 
+  // Dynamic Document Title
+  useEffect(() => {
+    document.title = storeSettings?.name ? `Admin | ${storeSettings.name}` : 'Admin'
+  }, [storeSettings?.name])
+
   const fetchSettings = async () => {
     try {
       const res = await fetch('/api/settings/')
@@ -604,8 +609,10 @@ export default function AdminDashboardPage() {
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-64 bg-white border-r border-slate-200 p-6 flex-col gap-6 h-screen sticky top-0">
         <div>
-           <h2 className="font-serif text-2xl font-bold text-slate-800 tracking-tight">Admin PYME</h2>
-           <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mt-1">Control de Tienda</p>
+           <h2 className="font-serif text-lg font-bold text-slate-800 tracking-tight truncate" title={storeSettings.name || 'Admin'}>
+             {storeSettings.name || 'Admin'}
+           </h2>
+           <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mt-0.5">Panel de Control</p>
         </div>
 
         <nav className="flex flex-col gap-1.5">

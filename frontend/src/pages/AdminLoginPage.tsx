@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Lock, ArrowRight, Loader2, AlertCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -8,6 +8,10 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const navigate = useNavigate()
+
+  useEffect(() => {
+    document.title = 'Admin | Iniciar Sesión'
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
