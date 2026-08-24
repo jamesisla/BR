@@ -141,6 +141,11 @@ type StoreSettings struct {
 	FlowApiKey                string `gorm:"type:varchar(255);default:''" json:"flow_api_key"`
 	FlowSecretKey             string `gorm:"type:varchar(255);default:''" json:"flow_secret_key"`
 	FlowSandbox               bool   `gorm:"type:boolean;default:true" json:"flow_sandbox"`
+
+	// Telegram Bot Notifications
+	TelegramNotificationsEnabled bool   `gorm:"type:boolean;default:false" json:"telegram_notifications_enabled"`
+	TelegramBotToken             string `gorm:"type:varchar(255);default:''" json:"telegram_bot_token"`
+	TelegramChatID               string `gorm:"type:varchar(100);default:''" json:"telegram_chat_id"`
 }
 
 // Visit stores rich visitor & connection information

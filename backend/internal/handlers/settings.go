@@ -7,6 +7,7 @@ import (
 	"gorm.io/gorm"
 
 	"tienda-backend/internal/models"
+	"tienda-backend/internal/services"
 )
 
 type SettingsHandler struct {
@@ -109,6 +110,11 @@ func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
 		settings.FlowSecretKey = input.FlowSecretKey
 		settings.FlowSandbox = input.FlowSandbox
 
+		// Telegram Bot Notifications
+		settings.TelegramNotificationsEnabled = input.TelegramNotificationsEnabled
+		settings.TelegramBotToken = input.TelegramBotToken
+		settings.TelegramChatID = input.TelegramChatID
+
 		if err := h.db.Save(&settings).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"detail": "Error al actualizar configuración"})
 			return
@@ -116,4 +122,52 @@ func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, settings)
+}
+
+type TestTelegramRequest struct {
+	BotToken string `json:"bot_token"`
+	ChatID   string `json:"chat_id"`
+}
+
+// TestTelegram sends a test notification to verify Telegram Bot configuration
+func (h *SettingsHandler) TestTelegram(c *gin.Context) {
+	var req TestTelegramRequest
+	_ = c.ShouldBindJSON(&req)
+
+	var settings models.StoreSettings
+	_ = h.db.First(&settings).Error
+
+	botToken := req.BotToken
+	if botToken == "" {
+		botToken = settings.TelegramBotToken
+	}
+	chatID := req.ChatID
+	if chatID == "" {
+		chatID = settings.TelegramChatID
+	}
+
+	if botToken == "" || chatID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Por favor ingresa tanto el Bot Token como el Chat ID para enviar la prueba."})
+		return
+	}
+
+	storeName := settings.Name
+	if storeName == "" {
+		storeName = "Tienda Demo"
+	}
+
+	testMsg := "🧪 <b>¡Conexión Exitosa con Telegram!</b>\n\n" +
+		"Las notificaciones de pedidos nuevos para tu tienda <b>" + storeName + "</b> están configuradas correctamente.\n\n" +
+		"Recibirás un mensaje instantáneo cada vez que un cliente registre una compra. 🚀"
+
+	err := services.GetTelegramService().SendMessage(botToken, chatID, testMsg)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Error al conectar con Telegram: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "ok",
+		"message": "¡Mensaje de prueba enviado con éxito a tu Telegram!",
+	})
 }

@@ -182,6 +182,7 @@ func main() {
 			settingsGroup.GET("", settingsHandler.GetSettings)
 			settingsGroup.POST("/", settingsHandler.UpdateSettings)
 			settingsGroup.POST("", settingsHandler.UpdateSettings)
+			settingsGroup.POST("/test-telegram", settingsHandler.TestTelegram)
 		}
 
 		// Categories

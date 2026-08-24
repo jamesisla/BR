@@ -46,6 +46,9 @@ export interface StoreConfig {
   flow_api_key?: string
   flow_secret_key?: string
   flow_sandbox?: boolean
+  telegram_notifications_enabled?: boolean
+  telegram_bot_token?: string
+  telegram_chat_id?: string
 }
 
 // Chilean Peso Formatter ($49.990 CLP)

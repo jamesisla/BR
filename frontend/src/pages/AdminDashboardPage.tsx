@@ -31,7 +31,10 @@ import {
   Star,
   Images as ImagesIcon,
   Upload,
-  Globe
+  Globe,
+  Bell,
+  Send,
+  Printer
 } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCart, formatCLP, formatImageUrl } from '../context/CartContext'
@@ -162,8 +165,13 @@ export default function AdminDashboardPage() {
     payment_flow_enabled: false,
     flow_api_key: '',
     flow_secret_key: '',
-    flow_sandbox: true
+    flow_sandbox: true,
+    telegram_notifications_enabled: false,
+    telegram_bot_token: '',
+    telegram_chat_id: ''
   })
+
+  const [testingTelegram, setTestingTelegram] = useState(false)
 
   const [productForm, setProductForm] = useState<{
     name: string
@@ -243,7 +251,10 @@ export default function AdminDashboardPage() {
           payment_flow_enabled: data.payment_flow_enabled === true,
           flow_api_key: data.flow_api_key || '',
           flow_secret_key: data.flow_secret_key || '',
-          flow_sandbox: data.flow_sandbox !== false
+          flow_sandbox: data.flow_sandbox !== false,
+          telegram_notifications_enabled: data.telegram_notifications_enabled === true,
+          telegram_bot_token: data.telegram_bot_token || '',
+          telegram_chat_id: data.telegram_chat_id || ''
         })
         setLogoPreview(data.logo_url || '')
         setHeroPreview(data.hero_image_url || '')
@@ -699,6 +710,35 @@ export default function AdminDashboardPage() {
     }
   }
 
+  const handleTestTelegram = async () => {
+    if (!storeSettings.telegram_bot_token || !storeSettings.telegram_chat_id) {
+      alert('⚠️ Por favor ingresa el Bot Token y el Chat ID antes de realizar la prueba.')
+      return
+    }
+
+    setTestingTelegram(true)
+    try {
+      const res = await fetch('/api/settings/test-telegram', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bot_token: storeSettings.telegram_bot_token,
+          chat_id: storeSettings.telegram_chat_id
+        })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        alert('🎉 ' + (data.message || '¡Mensaje enviado con éxito a tu Telegram! Revisa la app en tu teléfono.'))
+      } else {
+        alert('❌ Error al enviar mensaje: ' + (data.detail || 'Verifica que el Bot Token y Chat ID sean válidos.'))
+      }
+    } catch (e: any) {
+      alert('❌ Error de conexión: ' + (e?.message || 'No se pudo contactar al servidor'))
+    } finally {
+      setTestingTelegram(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col md:flex-row pb-24 md:pb-0">
       {/* Desktop Sidebar */}
@@ -846,7 +886,16 @@ export default function AdminDashboardPage() {
 
                       <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200">
                         <span className="font-bold text-base text-slate-900 font-mono">{formatCLP(order.total)}</span>
-                        <div className="flex gap-1.5">
+                        <div className="flex gap-1.5 items-center">
+                          <a
+                            href={`/checkout/success?order_id=${order.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm transition-all"
+                            title="Ver e Imprimir Comprobante PDF"
+                          >
+                            <Printer size={15} />
+                          </a>
                           {order.status === 'pending' && (
                             <button 
                               onClick={() => updateOrderStatus(order.id, 'paid')}
@@ -1424,6 +1473,80 @@ export default function AdminDashboardPage() {
                             </div>
                          )}
                       </div>
+                   </div>
+
+                   {/* SECCIÓN NOTIFICACIONES TELEGRAM */}
+                   <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4">
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                        <div>
+                          <h4 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                             <Bell size={18} className="text-sky-500" /> Notificaciones de Pedidos por Telegram
+                          </h4>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                             Recibe una alerta instantánea con sonido en tu teléfono cada vez que un cliente registre una compra.
+                          </p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                           <input 
+                              type="checkbox" 
+                              checked={storeSettings.telegram_notifications_enabled} 
+                              onChange={(e) => setStoreSettings({...storeSettings, telegram_notifications_enabled: e.target.checked})} 
+                              className="sr-only peer"
+                           />
+                           <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-500"></div>
+                        </label>
+                      </div>
+
+                      {storeSettings.telegram_notifications_enabled && (
+                        <div className="space-y-4 pt-1">
+                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div>
+                                 <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-1">
+                                    Telegram Bot Token
+                                 </label>
+                                 <input 
+                                    type="password"
+                                    value={storeSettings.telegram_bot_token}
+                                    onChange={(e) => setStoreSettings({...storeSettings, telegram_bot_token: e.target.value})}
+                                    placeholder="123456789:ABCdefGHIjklMNOpqrSTUvwxYZ"
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono"
+                                 />
+                                 <span className="text-[10px] text-slate-400 mt-1 block">Obtenido de @BotFather en Telegram</span>
+                              </div>
+
+                              <div>
+                                 <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-1">
+                                    Telegram Chat ID
+                                 </label>
+                                 <input 
+                                    type="text"
+                                    value={storeSettings.telegram_chat_id}
+                                    onChange={(e) => setStoreSettings({...storeSettings, telegram_chat_id: e.target.value})}
+                                    placeholder="ej: 987654321 o -100123456789"
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono"
+                                 />
+                                 <span className="text-[10px] text-slate-400 mt-1 block">Tu ID personal o el del grupo de ventas</span>
+                              </div>
+                           </div>
+
+                           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 bg-sky-50/70 border border-sky-100 rounded-2xl">
+                              <p className="text-[11px] text-sky-800 leading-relaxed">
+                                 💡 <strong>¿Cómo configurarlo en 1 minuto?</strong><br />
+                                 1. Crea un bot hablando con <code>@BotFather</code> y copia el Token.<br />
+                                 2. Inicia tu bot o habla con <code>@userinfobot</code> para obtener tu Chat ID.
+                              </p>
+                              <button
+                                 type="button"
+                                 onClick={handleTestTelegram}
+                                 disabled={testingTelegram}
+                                 className="px-4 py-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm flex-shrink-0"
+                              >
+                                 {testingTelegram ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                                 <span>Probar Conexión</span>
+                              </button>
+                           </div>
+                        </div>
+                      )}
                    </div>
                   
                   <button type="submit" disabled={logoUploading || heroUploading} className="btn-primary w-full py-4 text-xs font-bold rounded-2xl shadow-xl justify-center">

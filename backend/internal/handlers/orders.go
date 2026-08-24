@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm"
 
 	"tienda-backend/internal/models"
+	"tienda-backend/internal/services"
 )
 
 type OrderHandler struct {
@@ -102,6 +103,14 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 	// Return populated order
 	var fullOrder models.Order
 	h.db.Preload("Items.Product").Where("id = ?", orderID).First(&fullOrder)
+
+	// Trigger non-blocking Telegram notification if enabled
+	go func(ord models.Order) {
+		var settings models.StoreSettings
+		if err := h.db.First(&settings).Error; err == nil {
+			services.GetTelegramService().SendNewOrderNotification(&settings, &ord)
+		}
+	}(fullOrder)
 
 	c.JSON(http.StatusOK, fullOrder)
 }
