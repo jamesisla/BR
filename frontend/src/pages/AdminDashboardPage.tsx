@@ -218,9 +218,19 @@ export default function AdminDashboardPage() {
     document.title = storeSettings?.name ? `Admin | ${storeSettings.name}` : 'Admin'
   }, [storeSettings?.name])
 
+  const getAuthHeaders = (extraHeaders: Record<string, string> = {}) => {
+    const token = localStorage.getItem('tienda_admin_token') || ''
+    return {
+      'Authorization': `Bearer ${token}`,
+      ...extraHeaders
+    }
+  }
+
   const fetchSettings = async () => {
     try {
-      const res = await fetch('/api/settings/')
+      const res = await fetch('/api/settings/', {
+        headers: getAuthHeaders()
+      })
       const data = await res.json()
       if (data) {
         setStoreSettings({
@@ -266,7 +276,9 @@ export default function AdminDashboardPage() {
 
   const fetchCategories = async () => {
     try {
-      const res = await fetch('/api/categories/?all=true')
+      const res = await fetch('/api/categories/?all=true', {
+        headers: getAuthHeaders()
+      })
       const data = await res.json()
       if (Array.isArray(data)) {
         setCategories(data)
@@ -280,8 +292,8 @@ export default function AdminDashboardPage() {
     setLoading(true)
     try {
       const [ordersRes, productsRes] = await Promise.all([
-        fetch('/api/orders/'),
-        fetch('/api/products/all')
+        fetch('/api/orders/', { headers: getAuthHeaders() }),
+        fetch('/api/products/all', { headers: getAuthHeaders() })
       ])
       
       const ordersData = await ordersRes.json()
@@ -317,7 +329,8 @@ export default function AdminDashboardPage() {
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
       await fetch(`/api/orders/${orderId}/status?status=${newStatus}`, {
-        method: 'PATCH'
+        method: 'PATCH',
+        headers: getAuthHeaders()
       })
       fetchData()
     } catch (e) {
@@ -328,7 +341,8 @@ export default function AdminDashboardPage() {
   const toggleProductStatus = async (productId: string) => {
     try {
       await fetch(`/api/products/${productId}/toggle-active`, {
-        method: 'PATCH'
+        method: 'PATCH',
+        headers: getAuthHeaders()
       })
       fetchData()
     } catch (e) {
@@ -340,7 +354,8 @@ export default function AdminDashboardPage() {
     if (!confirm('¿Eliminar este producto de forma definitiva?')) return
     try {
       await fetch(`/api/products/${productId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: getAuthHeaders()
       })
       fetchData()
     } catch (e) {
@@ -429,7 +444,7 @@ export default function AdminDashboardPage() {
     try {
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(categoryForm)
       })
 
@@ -448,7 +463,10 @@ export default function AdminDashboardPage() {
 
   const toggleCategoryStatus = async (catId: string) => {
     try {
-      await fetch(`/api/categories/${catId}/toggle-active`, { method: 'PATCH' })
+      await fetch(`/api/categories/${catId}/toggle-active`, { 
+        method: 'PATCH',
+        headers: getAuthHeaders()
+      })
       fetchCategories()
       reloadCategories()
     } catch (e) {
@@ -459,7 +477,10 @@ export default function AdminDashboardPage() {
   const deleteCategoryPermanent = async (catId: string) => {
     if (!confirm('¿Eliminar esta categoría? Los productos asociados permanecerán pero sin categoría activa.')) return
     try {
-      await fetch(`/api/categories/${catId}`, { method: 'DELETE' })
+      await fetch(`/api/categories/${catId}`, { 
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      })
       fetchCategories()
       reloadCategories()
     } catch (e) {
@@ -502,7 +523,7 @@ export default function AdminDashboardPage() {
     try {
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           ...productForm,
           image_url: finalImageUrl,
@@ -537,12 +558,13 @@ export default function AdminDashboardPage() {
         // 1. Comprimir y optimizar a resolución Retina 1600px en el navegador
         const compressed = await compressImage(file, 1600, 1600, 0.88)
 
-        // 2. Subir archivo al backend
+        // 2. Subir archivo al backend con autenticación
         const formData = new FormData()
         formData.append('file', compressed)
 
         const response = await fetch('/api/products/upload', {
           method: 'POST',
+          headers: getAuthHeaders(),
           body: formData
         })
 
@@ -632,6 +654,7 @@ export default function AdminDashboardPage() {
 
       const response = await fetch('/api/products/upload', {
         method: 'POST',
+        headers: getAuthHeaders(),
         body: formData
       })
 
@@ -667,6 +690,7 @@ export default function AdminDashboardPage() {
 
       const response = await fetch('/api/products/upload', {
         method: 'POST',
+        headers: getAuthHeaders(),
         body: formData
       })
 
@@ -698,7 +722,7 @@ export default function AdminDashboardPage() {
     try {
       const res = await fetch('/api/settings/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(storeSettings)
       })
       if (res.ok) {
@@ -720,7 +744,7 @@ export default function AdminDashboardPage() {
     try {
       const res = await fetch('/api/settings/test-telegram', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           bot_token: storeSettings.telegram_bot_token,
           chat_id: storeSettings.telegram_chat_id

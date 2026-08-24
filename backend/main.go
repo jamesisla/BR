@@ -66,6 +66,15 @@ func main() {
 	}
 	r.Use(cors.New(corsConfig))
 
+	// 5.1 Setup HTTP Security Headers
+	r.Use(func(c *gin.Context) {
+		c.Header("X-Content-Type-Options", "nosniff")
+		c.Header("X-Frame-Options", "SAMEORIGIN")
+		c.Header("X-XSS-Protection", "1; mode=block")
+		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
+		c.Next()
+	})
+
 	// 6. Ensure Upload Directory exists and serve static uploads from disk
 	uploadDir := cfg.UploadDir
 	if uploadDir == "" {
@@ -80,8 +89,15 @@ func main() {
 	// Handler explícito para servir archivos de subida desde disco con lectura binaria directa y headers MIME
 	serveUploadedFile := func(c *gin.Context) {
 		paramPath := c.Param("filepath")
-		cleanPath := strings.TrimPrefix(paramPath, "/")
+		cleanRelPath := filepath.Clean("/" + paramPath)
+		cleanPath := strings.TrimPrefix(cleanRelPath, "/")
 		diskPath := filepath.Join(absUploadDir, cleanPath)
+
+		// Prevent Path Traversal
+		if !strings.HasPrefix(diskPath, absUploadDir) {
+			c.JSON(http.StatusForbidden, gin.H{"detail": "Acceso denegado"})
+			return
+		}
 
 		data, err := os.ReadFile(diskPath)
 		if err != nil {
@@ -175,14 +191,17 @@ func main() {
 			authGroup.POST("/login", authHandler.Login)
 		}
 
+		// Admin Auth Middleware
+		adminAuth := handlers.RequireAdminAuth(cfg)
+
 		// Store Settings & Branding Wizard
 		settingsGroup := api.Group("/settings")
 		{
 			settingsGroup.GET("/", settingsHandler.GetSettings)
 			settingsGroup.GET("", settingsHandler.GetSettings)
-			settingsGroup.POST("/", settingsHandler.UpdateSettings)
-			settingsGroup.POST("", settingsHandler.UpdateSettings)
-			settingsGroup.POST("/test-telegram", settingsHandler.TestTelegram)
+			settingsGroup.POST("/", adminAuth, settingsHandler.UpdateSettings)
+			settingsGroup.POST("", adminAuth, settingsHandler.UpdateSettings)
+			settingsGroup.POST("/test-telegram", adminAuth, settingsHandler.TestTelegram)
 		}
 
 		// Categories
@@ -190,11 +209,11 @@ func main() {
 		{
 			categoryGroup.GET("/", categoryHandler.ListCategories)
 			categoryGroup.GET("", categoryHandler.ListCategories)
-			categoryGroup.POST("/", categoryHandler.CreateCategory)
-			categoryGroup.POST("", categoryHandler.CreateCategory)
-			categoryGroup.PUT("/:id", categoryHandler.UpdateCategory)
-			categoryGroup.PATCH("/:id/toggle-active", categoryHandler.ToggleCategoryActive)
-			categoryGroup.DELETE("/:id", categoryHandler.DeleteCategory)
+			categoryGroup.POST("/", adminAuth, categoryHandler.CreateCategory)
+			categoryGroup.POST("", adminAuth, categoryHandler.CreateCategory)
+			categoryGroup.PUT("/:id", adminAuth, categoryHandler.UpdateCategory)
+			categoryGroup.PATCH("/:id/toggle-active", adminAuth, categoryHandler.ToggleCategoryActive)
+			categoryGroup.DELETE("/:id", adminAuth, categoryHandler.DeleteCategory)
 		}
 
 		// Products
@@ -202,25 +221,25 @@ func main() {
 		{
 			productGroup.GET("/", productHandler.ListProducts)
 			productGroup.GET("", productHandler.ListProducts)
-			productGroup.GET("/all", productHandler.ListAllProducts)
-			productGroup.POST("/", productHandler.CreateProduct)
-			productGroup.POST("", productHandler.CreateProduct)
-			productGroup.POST("/upload", productHandler.UploadImage)
+			productGroup.GET("/all", adminAuth, productHandler.ListAllProducts)
+			productGroup.POST("/", adminAuth, productHandler.CreateProduct)
+			productGroup.POST("", adminAuth, productHandler.CreateProduct)
+			productGroup.POST("/upload", adminAuth, productHandler.UploadImage)
 			productGroup.GET("/:slug", productHandler.GetProductBySlug)
-			productGroup.PUT("/:id", productHandler.UpdateProduct)
-			productGroup.PATCH("/:id/toggle-active", productHandler.ToggleProductActive)
-			productGroup.DELETE("/:id", productHandler.DeleteProduct)
+			productGroup.PUT("/:id", adminAuth, productHandler.UpdateProduct)
+			productGroup.PATCH("/:id/toggle-active", adminAuth, productHandler.ToggleProductActive)
+			productGroup.DELETE("/:id", adminAuth, productHandler.DeleteProduct)
 		}
 
 		// Orders
 		orderGroup := api.Group("/orders")
 		{
-			orderGroup.GET("/", orderHandler.ListOrders)
-			orderGroup.GET("", orderHandler.ListOrders)
+			orderGroup.GET("/", adminAuth, orderHandler.ListOrders)
+			orderGroup.GET("", adminAuth, orderHandler.ListOrders)
 			orderGroup.POST("/", orderHandler.CreateOrder)
 			orderGroup.POST("", orderHandler.CreateOrder)
 			orderGroup.GET("/:id", orderHandler.GetOrder)
-			orderGroup.PATCH("/:id/status", orderHandler.UpdateOrderStatus)
+			orderGroup.PATCH("/:id/status", adminAuth, orderHandler.UpdateOrderStatus)
 		}
 
 		// Payments (Modular Gateway Engine)
@@ -238,12 +257,12 @@ func main() {
 		analyticsGroup := api.Group("/analytics")
 		{
 			analyticsGroup.POST("/track", analyticsHandler.Track)
-			analyticsGroup.GET("/summary", analyticsHandler.GetSummary)
-			analyticsGroup.GET("/visits", analyticsHandler.ListVisits)
-			analyticsGroup.GET("/visits/:id", analyticsHandler.GetVisit)
-			analyticsGroup.POST("/toggle", analyticsHandler.ToggleTracking)
-			analyticsGroup.POST("/purge", analyticsHandler.PurgeVisits)
-			analyticsGroup.GET("/export", analyticsHandler.ExportCSV)
+			analyticsGroup.GET("/summary", adminAuth, analyticsHandler.GetSummary)
+			analyticsGroup.GET("/visits", adminAuth, analyticsHandler.ListVisits)
+			analyticsGroup.GET("/visits/:id", adminAuth, analyticsHandler.GetVisit)
+			analyticsGroup.POST("/toggle", adminAuth, analyticsHandler.ToggleTracking)
+			analyticsGroup.POST("/purge", adminAuth, analyticsHandler.PurgeVisits)
+			analyticsGroup.GET("/export", adminAuth, analyticsHandler.ExportCSV)
 		}
 	}
 

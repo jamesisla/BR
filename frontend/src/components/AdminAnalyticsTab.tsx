@@ -100,7 +100,10 @@ export default function AdminAnalyticsTab({ onSettingsUpdated }: AdminAnalyticsT
   const fetchSummary = async (selectedPeriod = period, incAdmin = includeAdminVisits) => {
     try {
       setLoadingSummary(true)
-      const res = await fetch(`/api/analytics/summary?period=${selectedPeriod}&include_admin=${incAdmin ? 'true' : 'false'}`)
+      const token = localStorage.getItem('tienda_admin_token') || ''
+      const res = await fetch(`/api/analytics/summary?period=${selectedPeriod}&include_admin=${incAdmin ? 'true' : 'false'}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
       if (res.ok) {
         const data = await res.json()
         setSummary(data)
@@ -115,6 +118,7 @@ export default function AdminAnalyticsTab({ onSettingsUpdated }: AdminAnalyticsT
   const fetchVisits = async (page = currentPage, sQuery = searchQuery, dev = deviceFilter, per = period, incAdmin = includeAdminVisits) => {
     try {
       setLoadingVisits(true)
+      const token = localStorage.getItem('tienda_admin_token') || ''
       const params = new URLSearchParams({
         page: String(page),
         limit: '25',
@@ -123,7 +127,9 @@ export default function AdminAnalyticsTab({ onSettingsUpdated }: AdminAnalyticsT
         period: per,
         include_admin: incAdmin ? 'true' : 'false',
       })
-      const res = await fetch(`/api/analytics/visits?${params.toString()}`)
+      const res = await fetch(`/api/analytics/visits?${params.toString()}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
       if (res.ok) {
         const data = await res.json()
         setVisits(data.items || [])
@@ -162,10 +168,14 @@ export default function AdminAnalyticsTab({ onSettingsUpdated }: AdminAnalyticsT
     if (!summary) return
     const newState = !summary.analytics_enabled
     setTogglingTracking(true)
+    const token = localStorage.getItem('tienda_admin_token') || ''
     try {
       const res = await fetch('/api/analytics/toggle', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ enabled: newState }),
       })
       if (res.ok) {
@@ -182,10 +192,14 @@ export default function AdminAnalyticsTab({ onSettingsUpdated }: AdminAnalyticsT
   // Purge Visits
   const handlePurgeVisits = async () => {
     setIsPurging(true)
+    const token = localStorage.getItem('tienda_admin_token') || ''
     try {
       const res = await fetch('/api/analytics/purge', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ period: purgePeriod }),
       })
       if (res.ok) {
@@ -205,10 +219,12 @@ export default function AdminAnalyticsTab({ onSettingsUpdated }: AdminAnalyticsT
 
   // Export CSV
   const handleExportCSV = () => {
+    const token = localStorage.getItem('tienda_admin_token') || ''
     const params = new URLSearchParams({
       period,
       device: deviceFilter,
       search: searchQuery,
+      admin_token: token,
     })
     window.open(`/api/analytics/export?${params.toString()}`, '_blank')
   }

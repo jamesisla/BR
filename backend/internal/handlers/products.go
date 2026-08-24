@@ -269,10 +269,26 @@ func (h *ProductHandler) UploadImage(c *gin.Context) {
 	}
 	_ = os.Chmod(absUploadDir, 0777)
 
-	// Safe unique filename
+	// Strict Extension Whitelist
 	ext := strings.ToLower(filepath.Ext(file.Filename))
-	if ext == "" || ext == "." {
-		ext = ".jpg"
+	allowedExts := map[string]bool{
+		".jpg":  true,
+		".jpeg": true,
+		".png":  true,
+		".webp": true,
+		".gif":  true,
+		".svg":  true,
+	}
+
+	if !allowedExts[ext] {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Formato de archivo no permitido. Solo se aceptan imágenes JPG, PNG, WEBP, GIF o SVG."})
+		return
+	}
+
+	// Max size check: 20MB
+	if file.Size > 20<<20 {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "El archivo es demasiado pesado. El tamaño máximo permitido es 20 MB."})
+		return
 	}
 
 	base := strings.TrimSuffix(filepath.Base(file.Filename), filepath.Ext(file.Filename))
