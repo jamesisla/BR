@@ -2,106 +2,105 @@ package handlers
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
 	"tienda-backend/internal/models"
-	"tienda-backend/internal/services"
+	"tienda-backend/internal/payments"
 )
 
 type PaymentHandler struct {
-	db        *gorm.DB
-	mpService *services.MercadoPagoService
+	db       *gorm.DB
+	registry *payments.Registry
 }
 
-func NewPaymentHandler(db *gorm.DB, mpService *services.MercadoPagoService) *PaymentHandler {
+func NewPaymentHandler(db *gorm.DB) *PaymentHandler {
 	return &PaymentHandler{
-		db:        db,
-		mpService: mpService,
+		db:       db,
+		registry: payments.GetRegistry(),
 	}
 }
 
-// CreatePreference generates a Mercado Pago Checkout Pro preference
-func (h *PaymentHandler) CreatePreference(c *gin.Context) {
-	var req models.PaymentPreferenceRequest
+// GetMethods returns the list of available/active payment methods for the store
+func (h *PaymentHandler) GetMethods(c *gin.Context) {
+	var settings models.StoreSettings
+	_ = h.db.First(&settings).Error
+
+	methods := h.registry.GetAvailableMethods(&settings)
+	c.JSON(http.StatusOK, gin.H{
+		"methods": methods,
+	})
+}
+
+type CreatePaymentRequest struct {
+	OrderID  string `json:"order_id" binding:"required"`
+	MethodID string `json:"method_id" binding:"required"`
+}
+
+// CreatePayment initializes payment for a specific order with the selected payment provider
+func (h *PaymentHandler) CreatePayment(c *gin.Context) {
+	var req CreatePaymentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "order_id es requerido"})
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Datos de pago incompletos: " + err.Error()})
 		return
 	}
 
 	var order models.Order
-	if err := h.db.Preload("Items.Product").Where("id = ?", req.OrderID).First(&order).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"detail": "Pedido no encontrado"})
+	if err := h.db.Preload("Items").Preload("Items.Product").Where("id = ?", req.OrderID).First(&order).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"detail": "Orden no encontrada"})
 		return
 	}
 
-	prefResp, err := h.mpService.CreatePreference(&order)
-	if err != nil {
-		log.Printf("Advertencia Mercado Pago (modo fallback/demo): %v", err)
-		// Fallback for development/offline testing if MP credentials are mock
-		fallbackInitPoint := fmt.Sprintf("/checkout/success?orderId=%s", order.ID)
-		c.JSON(http.StatusOK, gin.H{
-			"id":         "pref-mock-demo-" + order.ID,
-			"init_point": fallbackInitPoint,
-		})
+	provider, ok := h.registry.Get(req.MethodID)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": fmt.Sprintf("Método de pago '%s' no soportado", req.MethodID)})
 		return
+	}
+
+	var settings models.StoreSettings
+	_ = h.db.First(&settings).Error
+
+	if !provider.IsEnabled(&settings) {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": fmt.Sprintf("El método de pago '%s' no está habilitado actualmente", provider.Name())})
+		return
+	}
+
+	resp, err := provider.CreatePayment(c, &order, &settings)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Error procesando pago: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+// HandleWebhook processes asynchronous callbacks and notifications from payment gateways
+func (h *PaymentHandler) HandleWebhook(c *gin.Context) {
+	providerID := c.Param("provider")
+	provider, ok := h.registry.Get(providerID)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Proveedor desconocido"})
+		return
+	}
+
+	var settings models.StoreSettings
+	_ = h.db.First(&settings).Error
+
+	result, err := provider.HandleWebhook(c, &settings)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Error en webhook: " + err.Error()})
+		return
+	}
+
+	if result != nil && result.OrderID != "" && result.Status == "paid" {
+		// Update order to paid in DB
+		_ = h.db.Model(&models.Order{}).Where("id = ?", result.OrderID).Update("status", "paid").Error
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"id":         prefResp.ID,
-		"init_point": prefResp.InitPoint,
+		"status": "received",
+		"result": result,
 	})
-}
-
-// Webhook processes asynchronous payment notifications from Mercado Pago
-func (h *PaymentHandler) Webhook(c *gin.Context) {
-	var payload map[string]interface{}
-	if err := c.ShouldBindJSON(&payload); err != nil {
-		// Even if empty payload, check query params as MP sends GET/POST combinations
-		payload = make(map[string]interface{})
-	}
-
-	notificationType, _ := payload["type"].(string)
-	if notificationType == "" {
-		notificationType = c.Query("type")
-		if notificationType == "" {
-			notificationType = c.Query("topic")
-		}
-	}
-
-	var paymentID string
-	if dataMap, ok := payload["data"].(map[string]interface{}); ok {
-		if idVal, exists := dataMap["id"]; exists {
-			paymentID = fmt.Sprintf("%v", idVal)
-		}
-	}
-	if paymentID == "" {
-		paymentID = c.Query("data.id")
-		if paymentID == "" {
-			paymentID = c.Query("id")
-		}
-	}
-
-	if (notificationType == "payment" || notificationType == "payment.created" || notificationType == "payment.updated") && paymentID != "" {
-		log.Printf("Recibida notificación de pago ID %s", paymentID)
-
-		paymentInfo, err := h.mpService.GetPayment(paymentID)
-		if err == nil && paymentInfo != nil {
-			if paymentInfo.Status == "approved" && paymentInfo.ExternalReference != "" {
-				var order models.Order
-				if err := h.db.Where("id = ?", paymentInfo.ExternalReference).First(&order).Error; err == nil {
-					order.Status = "paid"
-					h.db.Save(&order)
-					log.Printf("¡Pedido %s marcado automáticamente como PAGADO!", paymentInfo.ExternalReference)
-				}
-			}
-		} else {
-			log.Printf("Nota: No se pudo verificar pago en MP (modo simulación/test): %v", err)
-		}
-	}
-
-	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }

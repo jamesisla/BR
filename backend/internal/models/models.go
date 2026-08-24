@@ -130,6 +130,17 @@ type StoreSettings struct {
 	Currency           string `gorm:"type:varchar(10);default:'CLP'" json:"currency"`
 	AnalyticsEnabled   bool   `gorm:"type:boolean;default:true" json:"analytics_enabled"`
 	IgnoreAdminVisits  bool   `gorm:"type:boolean;default:true" json:"ignore_admin_visits"`
+
+	// Modular Payment Providers
+	PaymentWhatsAppEnabled    bool   `gorm:"type:boolean;default:true" json:"payment_whatsapp_enabled"`
+	PaymentMercadoPagoEnabled bool   `gorm:"type:boolean;default:false" json:"payment_mercadopago_enabled"`
+	MercadoPagoPublicKey      string `gorm:"type:varchar(255);default:''" json:"mercadopago_public_key"`
+	MercadoPagoAccessToken    string `gorm:"type:varchar(255);default:''" json:"mercadopago_access_token"`
+	MercadoPagoSandbox        bool   `gorm:"type:boolean;default:true" json:"mercadopago_sandbox"`
+	PaymentFlowEnabled        bool   `gorm:"type:boolean;default:false" json:"payment_flow_enabled"`
+	FlowApiKey                string `gorm:"type:varchar(255);default:''" json:"flow_api_key"`
+	FlowSecretKey             string `gorm:"type:varchar(255);default:''" json:"flow_secret_key"`
+	FlowSandbox               bool   `gorm:"type:boolean;default:true" json:"flow_sandbox"`
 }
 
 // Visit stores rich visitor & connection information

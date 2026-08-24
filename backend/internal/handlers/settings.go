@@ -98,6 +98,17 @@ func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
 		settings.AnalyticsEnabled = input.AnalyticsEnabled
 		settings.IgnoreAdminVisits = input.IgnoreAdminVisits
 
+		// Modular Payment Gateways
+		settings.PaymentWhatsAppEnabled = input.PaymentWhatsAppEnabled
+		settings.PaymentMercadoPagoEnabled = input.PaymentMercadoPagoEnabled
+		settings.MercadoPagoPublicKey = input.MercadoPagoPublicKey
+		settings.MercadoPagoAccessToken = input.MercadoPagoAccessToken
+		settings.MercadoPagoSandbox = input.MercadoPagoSandbox
+		settings.PaymentFlowEnabled = input.PaymentFlowEnabled
+		settings.FlowApiKey = input.FlowApiKey
+		settings.FlowSecretKey = input.FlowSecretKey
+		settings.FlowSandbox = input.FlowSandbox
+
 		if err := h.db.Save(&settings).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"detail": "Error al actualizar configuración"})
 			return

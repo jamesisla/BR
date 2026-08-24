@@ -21,7 +21,6 @@ import (
 	"tienda-backend/internal/config"
 	"tienda-backend/internal/database"
 	"tienda-backend/internal/handlers"
-	"tienda-backend/internal/services"
 )
 
 //go:embed all:dist
@@ -40,15 +39,12 @@ func main() {
 		log.Fatalf("Error crítico al inicializar la base de datos: %v", err)
 	}
 
-	// 2. Initialize Services
-	mpService := services.NewMercadoPagoService(cfg)
-
-	// 3. Initialize Handlers
+	// 2. Initialize Handlers
 	authHandler := handlers.NewAuthHandler(cfg)
 	productHandler := handlers.NewProductHandler(db, cfg)
 	settingsHandler := handlers.NewSettingsHandler(db)
 	orderHandler := handlers.NewOrderHandler(db)
-	paymentHandler := handlers.NewPaymentHandler(db, mpService)
+	paymentHandler := handlers.NewPaymentHandler(db)
 	categoryHandler := handlers.NewCategoryHandler(db, cfg)
 	analyticsHandler := handlers.NewAnalyticsHandler(db)
 
@@ -226,11 +222,15 @@ func main() {
 			orderGroup.PATCH("/:id/status", orderHandler.UpdateOrderStatus)
 		}
 
-		// Payments
+		// Payments (Modular Gateway Engine)
 		paymentGroup := api.Group("/payments")
 		{
-			paymentGroup.POST("/create-preference", paymentHandler.CreatePreference)
-			paymentGroup.POST("/webhook", paymentHandler.Webhook)
+			paymentGroup.GET("/methods", paymentHandler.GetMethods)
+			paymentGroup.POST("/create", paymentHandler.CreatePayment)
+			paymentGroup.POST("/create-preference", paymentHandler.CreatePayment)
+			paymentGroup.POST("/webhook", paymentHandler.HandleWebhook)
+			paymentGroup.POST("/webhook/:provider", paymentHandler.HandleWebhook)
+			paymentGroup.GET("/webhook/:provider", paymentHandler.HandleWebhook)
 		}
 
 		// Analytics & Visitors Tracking

@@ -37,6 +37,15 @@ export interface StoreConfig {
   announcement_bar?: string
   announcement_active?: boolean
   currency: string
+  payment_whatsapp_enabled?: boolean
+  payment_mercadopago_enabled?: boolean
+  mercadopago_public_key?: string
+  mercadopago_access_token?: string
+  mercadopago_sandbox?: boolean
+  payment_flow_enabled?: boolean
+  flow_api_key?: string
+  flow_secret_key?: string
+  flow_sandbox?: boolean
 }
 
 // Chilean Peso Formatter ($49.990 CLP)

@@ -30,7 +30,8 @@ import {
   Shield,
   Star,
   Images as ImagesIcon,
-  Upload
+  Upload,
+  Globe
 } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCart, formatCLP, formatImageUrl } from '../context/CartContext'
@@ -152,7 +153,16 @@ export default function AdminDashboardPage() {
     announcement_active: true,
     currency: 'CLP',
     analytics_enabled: true,
-    ignore_admin_visits: false
+    ignore_admin_visits: false,
+    payment_whatsapp_enabled: true,
+    payment_mercadopago_enabled: false,
+    mercadopago_public_key: '',
+    mercadopago_access_token: '',
+    mercadopago_sandbox: true,
+    payment_flow_enabled: false,
+    flow_api_key: '',
+    flow_secret_key: '',
+    flow_sandbox: true
   })
 
   const [productForm, setProductForm] = useState<{
@@ -224,7 +234,16 @@ export default function AdminDashboardPage() {
           announcement_active: data.announcement_active !== false,
           currency: data.currency || 'CLP',
           analytics_enabled: data.analytics_enabled !== false,
-          ignore_admin_visits: data.ignore_admin_visits === true
+          ignore_admin_visits: data.ignore_admin_visits === true,
+          payment_whatsapp_enabled: data.payment_whatsapp_enabled !== false,
+          payment_mercadopago_enabled: data.payment_mercadopago_enabled === true,
+          mercadopago_public_key: data.mercadopago_public_key || '',
+          mercadopago_access_token: data.mercadopago_access_token || '',
+          mercadopago_sandbox: data.mercadopago_sandbox !== false,
+          payment_flow_enabled: data.payment_flow_enabled === true,
+          flow_api_key: data.flow_api_key || '',
+          flow_secret_key: data.flow_secret_key || '',
+          flow_sandbox: data.flow_sandbox !== false
         })
         setLogoPreview(data.logo_url || '')
         setHeroPreview(data.hero_image_url || '')
@@ -1241,6 +1260,171 @@ export default function AdminDashboardPage() {
                        </div>
                     </div>
                   </div>
+
+                  {/* SECCIÓN MODULAR DE MEDIOS Y PASARELAS DE PAGO */}
+                  <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-6">
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                        <div>
+                          <h4 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                             <CreditCard size={18} className="text-emerald-600" /> Pasarelas y Medios de Pago
+                          </h4>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                             Activa o desactiva las opciones de cobro disponibles para tus clientes en el checkout.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Módulo 1: WhatsApp y Transferencia Bancaria Manual */}
+                      <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
+                         <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                               <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl">
+                                  <MessageCircle size={18} />
+                               </div>
+                               <div>
+                                  <h5 className="font-bold text-xs text-slate-900">Transferencia Bancaria & Pedidos por WhatsApp</h5>
+                                  <p className="text-[11px] text-slate-400">Ventas directas sin comisión de pasarelas (CuentaRUT / Cta Corriente)</p>
+                               </div>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                               <input 
+                                  type="checkbox" 
+                                  checked={storeSettings.payment_whatsapp_enabled} 
+                                  onChange={(e) => setStoreSettings({...storeSettings, payment_whatsapp_enabled: e.target.checked})} 
+                                  className="sr-only peer"
+                               />
+                               <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                            </label>
+                         </div>
+
+                         {storeSettings.payment_whatsapp_enabled && (
+                            <div className="pt-2 border-t border-slate-200/60">
+                               <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-1">
+                                  Datos de Transferencia Bancaria (CuentaRUT / Banco / Titular)
+                               </label>
+                               <textarea 
+                                  value={storeSettings.bank_details}
+                                  onChange={(e) => setStoreSettings({...storeSettings, bank_details: e.target.value})}
+                                  rows={2}
+                                  placeholder="BancoEstado | CuentaRUT: 12.345.678-9 | Titular: ... | Correo: ..."
+                                  className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs"
+                               />
+                            </div>
+                         )}
+                      </div>
+
+                      {/* Módulo 2: Mercado Pago (Checkout Pro) */}
+                      <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
+                         <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                               <div className="p-2 bg-blue-100 text-blue-700 rounded-xl">
+                                  <CreditCard size={18} />
+                               </div>
+                               <div>
+                                  <h5 className="font-bold text-xs text-slate-900">Mercado Pago (Tarjetas Débito y Crédito)</h5>
+                                  <p className="text-[11px] text-slate-400">Cobro automático con Redcompra, Visa, Mastercard, Mach y Cuotas</p>
+                               </div>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                               <input 
+                                  type="checkbox" 
+                                  checked={storeSettings.payment_mercadopago_enabled} 
+                                  onChange={(e) => setStoreSettings({...storeSettings, payment_mercadopago_enabled: e.target.checked})} 
+                                  className="sr-only peer"
+                               />
+                               <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                         </div>
+
+                         {storeSettings.payment_mercadopago_enabled && (
+                            <div className="pt-3 border-t border-slate-200/60 space-y-3">
+                               <div className="flex items-center justify-between bg-blue-50/70 p-2.5 rounded-xl border border-blue-100 text-xs">
+                                  <span className="font-bold text-blue-900">Modo de Pruebas (Sandbox):</span>
+                                  <label className="relative inline-flex items-center cursor-pointer">
+                                     <input 
+                                        type="checkbox" 
+                                        checked={storeSettings.mercadopago_sandbox} 
+                                        onChange={(e) => setStoreSettings({...storeSettings, mercadopago_sandbox: e.target.checked})} 
+                                        className="sr-only peer"
+                                     />
+                                     <div className="w-8 h-4 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-blue-600"></div>
+                                  </label>
+                               </div>
+
+                               <div>
+                                  <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-1">Access Token (Producción o Sandbox)</label>
+                                  <input 
+                                     type="password"
+                                     value={storeSettings.mercadopago_access_token}
+                                     onChange={(e) => setStoreSettings({...storeSettings, mercadopago_access_token: e.target.value})}
+                                     placeholder="APP_USR-..."
+                                     className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-mono"
+                                  />
+                               </div>
+
+                               <div>
+                                  <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-1">Public Key (Opcional)</label>
+                                  <input 
+                                     type="text"
+                                     value={storeSettings.mercadopago_public_key}
+                                     onChange={(e) => setStoreSettings({...storeSettings, mercadopago_public_key: e.target.value})}
+                                     placeholder="APP_USR-..."
+                                     className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-mono"
+                                  />
+                               </div>
+                            </div>
+                         )}
+                      </div>
+
+                      {/* Módulo 3: Flow.cl */}
+                      <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
+                         <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                               <div className="p-2 bg-purple-100 text-purple-700 rounded-xl">
+                                  <Globe size={18} />
+                               </div>
+                               <div>
+                                  <h5 className="font-bold text-xs text-slate-900">Flow.cl (Webpay Plus, Servipag, Multicaja)</h5>
+                                  <p className="text-[11px] text-slate-400">Pasarela chilena multicanal</p>
+                               </div>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                               <input 
+                                  type="checkbox" 
+                                  checked={storeSettings.payment_flow_enabled} 
+                                  onChange={(e) => setStoreSettings({...storeSettings, payment_flow_enabled: e.target.checked})} 
+                                  className="sr-only peer"
+                               />
+                               <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                            </label>
+                         </div>
+
+                         {storeSettings.payment_flow_enabled && (
+                            <div className="pt-3 border-t border-slate-200/60 space-y-3">
+                               <div>
+                                  <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-1">API Key Flow</label>
+                                  <input 
+                                     type="text"
+                                     value={storeSettings.flow_api_key}
+                                     onChange={(e) => setStoreSettings({...storeSettings, flow_api_key: e.target.value})}
+                                     placeholder="API Key de Flow"
+                                     className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-mono"
+                                  />
+                               </div>
+                               <div>
+                                  <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-1">Secret Key Flow</label>
+                                  <input 
+                                     type="password"
+                                     value={storeSettings.flow_secret_key}
+                                     onChange={(e) => setStoreSettings({...storeSettings, flow_secret_key: e.target.value})}
+                                     placeholder="Secret Key de Flow"
+                                     className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-mono"
+                                  />
+                               </div>
+                            </div>
+                         )}
+                      </div>
+                   </div>
                   
                   <button type="submit" disabled={logoUploading || heroUploading} className="btn-primary w-full py-4 text-xs font-bold rounded-2xl shadow-xl justify-center">
                      <Save size={16} /> Guardar Toda la Configuración

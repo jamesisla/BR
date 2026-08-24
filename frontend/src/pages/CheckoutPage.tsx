@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowLeft, MessageCircle, CreditCard, ShieldCheck, Truck, Store, CheckCircle, Loader2 } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -9,6 +9,16 @@ export default function CheckoutPage() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [deliveryType, setDeliveryType] = useState<'envio' | 'retiro'>('envio')
+  const [paymentMethods, setPaymentMethods] = useState<any[]>([
+    {
+      id: 'whatsapp_manual',
+      name: 'Transferencia Bancaria & Pedido por WhatsApp',
+      description: 'Transfiere directamente a CuentaRUT o Cuenta Corriente y confirma tu pedido al instante por WhatsApp.',
+      icon: 'whatsapp',
+      type: 'manual'
+    }
+  ])
+  const [selectedMethod, setSelectedMethod] = useState<string>('whatsapp_manual')
   
   const [formData, setFormData] = useState({
     name: '',
@@ -17,6 +27,20 @@ export default function CheckoutPage() {
     address: '',
     city: ''
   })
+
+  useEffect(() => {
+    fetch('/api/payments/methods')
+      .then(res => res.json())
+      .then(data => {
+        if (data.methods && data.methods.length > 0) {
+          setPaymentMethods(data.methods)
+          setSelectedMethod(data.methods[0].id)
+        }
+      })
+      .catch(err => {
+        console.error('Error loading payment methods:', err)
+      })
+  }, [])
 
   if (cart.length === 0) {
     return (
@@ -43,7 +67,7 @@ export default function CheckoutPage() {
       : 'Retiro en Tienda'
 
     const orderData = {
-      email: formData.email || 'pedido-whatsapp@tienda.cl',
+      email: formData.email || 'pedido@tienda.cl',
       first_name: formData.name,
       last_name: formData.phone ? `(Tel: ${formData.phone})` : '',
       address: fullAddress,
@@ -56,7 +80,7 @@ export default function CheckoutPage() {
     }
 
     try {
-      // Registrar pedido en la base de datos para seguimiento del comerciante
+      // 1. Registrar pedido en la base de datos
       const response = await fetch('/api/orders/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -64,7 +88,31 @@ export default function CheckoutPage() {
       })
 
       if (response.ok) {
-        // Abrir WhatsApp con el pedido estructurado
+        const orderResult = await response.json()
+        const orderId = orderResult.id || orderResult.order_id
+
+        // 2. Inicializar con la pasarela de pago seleccionada
+        if (selectedMethod && selectedMethod !== 'whatsapp_manual') {
+          const payRes = await fetch('/api/payments/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              order_id: orderId,
+              method_id: selectedMethod
+            })
+          })
+
+          if (payRes.ok) {
+            const payData = await payRes.json()
+            if (payData.redirect_url) {
+              clearCart()
+              window.location.href = payData.redirect_url
+              return
+            }
+          }
+        }
+
+        // Flujo Directo WhatsApp
         const waURL = getWhatsAppOrderURL(deliveryType, {
           name: formData.name,
           address: fullAddress,
@@ -82,7 +130,7 @@ export default function CheckoutPage() {
           return
         }
 
-        // Si es otro error de red, igual permitir procesar por WhatsApp
+        // Fallback a WhatsApp
         const waURL = getWhatsAppOrderURL(deliveryType, {
           name: formData.name,
           address: fullAddress,
@@ -229,28 +277,102 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Datos de Transferencia */}
-            <div className="p-5 bg-emerald-50/60 border border-emerald-200/60 rounded-2xl">
-               <div className="flex items-center gap-2 mb-2 text-emerald-800 font-bold text-xs">
-                  <CreditCard size={18} /> Pago vía Transferencia Bancaria
-               </div>
-               <p className="text-xs text-emerald-700 leading-relaxed font-mono whitespace-pre-line">
-                 {config?.bank_details || 'BancoEstado | CuentaRUT: 12.345.678-9 | Email: pagos@tienda.cl'}
-               </p>
-               <p className="text-[11px] text-emerald-600/80 mt-2">
-                 * Al hacer clic en el botón de abajo se abrirá WhatsApp con el pedido listo para que envíes el comprobante.
-               </p>
+            {/* 3. Selección de Medio de Pago */}
+            <div>
+              <h2 className="font-serif text-2xl sm:text-3xl font-bold text-slate-900 mb-2">3. Medio de Pago</h2>
+              <p className="text-xs text-slate-400 mb-4">Elige cómo deseas abonar tu compra</p>
+
+              <div className="space-y-3">
+                {paymentMethods.map((method) => {
+                  const isSelected = selectedMethod === method.id
+                  return (
+                    <div
+                      key={method.id}
+                      onClick={() => setSelectedMethod(method.id)}
+                      className={`p-4 rounded-2xl border-2 cursor-pointer transition-all flex items-start gap-3 ${
+                        isSelected
+                          ? 'border-slate-900 bg-slate-50/80 shadow-sm'
+                          : 'border-slate-100 hover:border-slate-200 bg-white'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="payment_method"
+                        checked={isSelected}
+                        onChange={() => setSelectedMethod(method.id)}
+                        className="mt-1 accent-slate-900 cursor-pointer"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs sm:text-sm text-slate-900">{method.name}</span>
+                          {method.id === 'mercadopago' && (
+                            <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-[9px] font-bold rounded-md uppercase">
+                              Tarjetas / Cuotas
+                            </span>
+                          )}
+                          {method.id === 'whatsapp_manual' && (
+                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[9px] font-bold rounded-md uppercase">
+                              Sin Comisión
+                            </span>
+                          )}
+                          {method.id === 'flow' && (
+                            <span className="px-2 py-0.5 bg-purple-100 text-purple-800 text-[9px] font-bold rounded-md uppercase">
+                              Webpay
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1 leading-relaxed">{method.description}</p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
+
+            {/* Datos de Transferencia (si se eligió WhatsApp / Transferencia) */}
+            {selectedMethod === 'whatsapp_manual' && (
+              <div className="p-5 bg-emerald-50/60 border border-emerald-200/60 rounded-2xl">
+                 <div className="flex items-center gap-2 mb-2 text-emerald-800 font-bold text-xs">
+                    <CreditCard size={18} /> Datos para Transferencia Bancaria
+                 </div>
+                 <p className="text-xs text-emerald-700 leading-relaxed font-mono whitespace-pre-line">
+                   {config?.bank_details || 'BancoEstado | CuentaRUT: 12.345.678-9 | Email: pagos@tienda.cl'}
+                 </p>
+                 <p className="text-[11px] text-emerald-600/80 mt-2">
+                   * Al finalizar se abrirá WhatsApp con el pedido estructurado para enviar el comprobante de transferencia.
+                 </p>
+              </div>
+            )}
 
             <button 
               type="submit"
               disabled={loading}
-              className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider rounded-2xl shadow-xl shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all"
+              className={`w-full py-4 text-white font-bold text-xs uppercase tracking-wider rounded-2xl shadow-xl flex items-center justify-center gap-2 transition-all ${
+                selectedMethod === 'mercadopago'
+                  ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/25'
+                  : selectedMethod === 'flow'
+                  ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-600/25'
+                  : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/25'
+              }`}
             >
               {loading ? <Loader2 className="animate-spin" size={18} /> : (
                 <>
-                  <MessageCircle size={20} />
-                  <span>Completar Pedido por WhatsApp ({formatCLP(totalPrice)})</span>
+                  {selectedMethod === 'mercadopago' ? (
+                    <>
+                      <CreditCard size={18} />
+                      <span>Pagar con Mercado Pago ({formatCLP(totalPrice)})</span>
+                    </>
+                  ) : selectedMethod === 'flow' ? (
+                    <>
+                      <CreditCard size={18} />
+                      <span>Continuar a Flow.cl ({formatCLP(totalPrice)})</span>
+                    </>
+                  ) : (
+                    <>
+                      <MessageCircle size={18} />
+                      <span>Completar Pedido por WhatsApp ({formatCLP(totalPrice)})</span>
+                    </>
+                  )}
                 </>
               )}
             </button>
