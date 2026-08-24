@@ -67,8 +67,8 @@ func InitDB(databaseURL string) (*gorm.DB, error) {
 		sqlDB.SetConnMaxLifetime(time.Hour)
 	}
 
-	// Auto-Migrate schema
-	log.Println("Ejecutando migraciones automáticas...")
+	// Auto-Migrate schema (Sin DropTable destructivo)
+	log.Println("Ejecutando migraciones automáticas seguras...")
 	if err := db.AutoMigrate(
 		&models.Category{},
 		&models.Product{},
@@ -77,18 +77,7 @@ func InitDB(databaseURL string) (*gorm.DB, error) {
 		&models.StoreSettings{},
 		&models.Visit{},
 	); err != nil {
-		log.Printf("Aviso: Esquema anterior incompatible detectado (%v). Reconstruyendo tablas limpiamente...", err)
-		_ = db.Migrator().DropTable(&models.OrderItem{}, &models.Order{}, &models.Product{}, &models.Category{}, &models.StoreSettings{}, &models.Visit{})
-		if err2 := db.AutoMigrate(
-			&models.Category{},
-			&models.Product{},
-			&models.Order{},
-			&models.OrderItem{},
-			&models.StoreSettings{},
-			&models.Visit{},
-		); err2 != nil {
-			return nil, fmt.Errorf("error en AutoMigrate: %w", err2)
-		}
+		log.Printf("Aviso durante AutoMigrate: %v", err)
 	}
 
 	// Limpiar automáticamente cualquier URL antigua con 'localhost' en la base de datos
@@ -98,7 +87,7 @@ func InitDB(databaseURL string) (*gorm.DB, error) {
 	_ = db.Exec("UPDATE store_settings SET hero_image_url = REPLACE(hero_image_url, 'http://localhost', '') WHERE hero_image_url LIKE '%localhost%'").Error
 	_ = db.Exec("UPDATE store_settings SET logo_url = REPLACE(logo_url, 'http://localhost:8000', '') WHERE logo_url LIKE '%localhost:8000%'").Error
 	_ = db.Exec("UPDATE store_settings SET logo_url = REPLACE(logo_url, 'http://localhost', '') WHERE logo_url LIKE '%localhost%'").Error
-	_ = db.Exec("UPDATE store_settings SET analytics_enabled = true, ignore_admin_visits = true WHERE analytics_enabled IS NULL").Error
+	_ = db.Exec("UPDATE store_settings SET analytics_enabled = true, ignore_admin_visits = false WHERE analytics_enabled IS NULL").Error
 
 	// Seed initial data if tables are empty
 	seedInitialData(db)
@@ -127,19 +116,19 @@ func seedInitialData(db *gorm.DB) {
 	if settingsCount == 0 {
 		log.Println("Inicializando configuración por defecto de la tienda...")
 		defaultSettings := models.StoreSettings{
-			Name:           "TIENDA DEMO PYME",
-			LogoURL:        "",
-			PrimaryColor:   "#2d1b0e",
-			SecondaryColor: "#9c6644",
-			FooterText:     "© 2026 Tienda Demo. Venta directa por WhatsApp.",
-			HeroTitle:      "Emprende con Estilo",
-			HeroSubtitle:   "Catálogo digital para PYMEs. Haz tu pedido directo por WhatsApp con transferencia.",
-			HeroImageURL:   "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=2000&auto=format&fit=crop",
+			Name:              "TIENDA DEMO PYME",
+			LogoURL:           "",
+			PrimaryColor:      "#2d1b0e",
+			SecondaryColor:    "#9c6644",
+			FooterText:        "© 2026 Tienda Demo. Venta directa por WhatsApp.",
+			HeroTitle:         "Emprende con Estilo",
+			HeroSubtitle:      "Catálogo digital para PYMEs. Haz tu pedido directo por WhatsApp con transferencia.",
+			HeroImageURL:      "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=2000&auto=format&fit=crop",
 			WhatsAppNumber:    "+56912345678",
 			BankDetails:       "BancoEstado | CuentaRUT: 12.345.678-9 | Titular: Tienda PYME | Correo: pagos@tienda.cl",
 			Currency:          "CLP",
 			AnalyticsEnabled:  true,
-			IgnoreAdminVisits: true,
+			IgnoreAdminVisits: false,
 		}
 		db.Create(&defaultSettings)
 	}

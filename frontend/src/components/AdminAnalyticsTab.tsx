@@ -54,6 +54,7 @@ export default function AdminAnalyticsTab({ onSettingsUpdated }: AdminAnalyticsT
   // Filters & State
   const [period, setPeriod] = useState<'today' | '7d' | '30d' | 'all'>('7d')
   const [deviceFilter, setDeviceFilter] = useState<'all' | 'mobile' | 'desktop' | 'tablet' | 'bot'>('all')
+  const [includeAdminVisits, setIncludeAdminVisits] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [togglingTracking, setTogglingTracking] = useState(false)
@@ -83,7 +84,7 @@ export default function AdminAnalyticsTab({ onSettingsUpdated }: AdminAnalyticsT
     }
   }
 
-  const fetchVisits = async (page = currentPage, sQuery = searchQuery, dev = deviceFilter, per = period) => {
+  const fetchVisits = async (page = currentPage, sQuery = searchQuery, dev = deviceFilter, per = period, incAdmin = includeAdminVisits) => {
     try {
       setLoadingVisits(true)
       const params = new URLSearchParams({
@@ -92,6 +93,7 @@ export default function AdminAnalyticsTab({ onSettingsUpdated }: AdminAnalyticsT
         search: sQuery,
         device: dev,
         period: per,
+        include_admin: incAdmin ? 'true' : 'false',
       })
       const res = await fetch(`/api/analytics/visits?${params.toString()}`)
       if (res.ok) {
@@ -110,14 +112,14 @@ export default function AdminAnalyticsTab({ onSettingsUpdated }: AdminAnalyticsT
 
   const handleRefreshAll = async () => {
     setIsRefreshing(true)
-    await Promise.all([fetchSummary(period), fetchVisits(currentPage, searchQuery, deviceFilter, period)])
+    await Promise.all([fetchSummary(period), fetchVisits(currentPage, searchQuery, deviceFilter, period, includeAdminVisits)])
     setIsRefreshing(false)
   }
 
   useEffect(() => {
     fetchSummary(period)
-    fetchVisits(1, searchQuery, deviceFilter, period)
-  }, [period, deviceFilter])
+    fetchVisits(1, searchQuery, deviceFilter, period, includeAdminVisits)
+  }, [period, deviceFilter, includeAdminVisits])
 
   // Handle Search Input with debounce
   useEffect(() => {
@@ -603,6 +605,17 @@ export default function AdminAnalyticsTab({ onSettingsUpdated }: AdminAnalyticsT
               <option value="tablet">Tablets</option>
               <option value="bot">Bots</option>
             </select>
+
+            <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-600 bg-slate-50 px-3 py-2 border border-slate-200 rounded-xl">
+              <input 
+                type="checkbox" 
+                checked={includeAdminVisits}
+                onChange={(e) => setIncludeAdminVisits(e.target.checked)}
+                className="rounded border-slate-300 text-slate-900 focus:ring-0 w-3.5 h-3.5"
+              />
+              <span className="hidden sm:inline">Incluir mis visitas admin</span>
+              <span className="sm:hidden">Ver admin</span>
+            </label>
           </div>
         </div>
 
@@ -635,6 +648,11 @@ export default function AdminAnalyticsTab({ onSettingsUpdated }: AdminAnalyticsT
                       <span className="px-2 py-0.5 bg-slate-200 text-slate-700 text-[10px] font-bold rounded-md uppercase">
                         {v.country_code || 'CL'} • {v.city || 'Chile'}
                       </span>
+                      {v.is_admin && (
+                        <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-bold rounded-md uppercase flex items-center gap-1">
+                          👑 Admin / Dueño
+                        </span>
+                      )}
                       <span className="text-[10px] font-semibold text-slate-500">
                         {v.browser} ({v.os})
                       </span>

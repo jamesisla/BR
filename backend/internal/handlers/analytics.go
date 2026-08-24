@@ -44,12 +44,8 @@ func (h *AnalyticsHandler) Track(c *gin.Context) {
 	var req models.TrackVisitRequest
 	_ = c.ShouldBindJSON(&req)
 
-	// 2. Filter out admin visits if configured
+	// 2. Identify Admin status
 	isAdmin := req.IsAdmin || strings.HasPrefix(req.Path, "/admin")
-	if isAdmin && settings.IgnoreAdminVisits {
-		c.JSON(http.StatusOK, gin.H{"status": "ignored_admin"})
-		return
-	}
 
 	// 3. Extract Real Client IP & Geolocation
 	clientIP := h.geo.GetClientIP(c.Request)
@@ -458,7 +454,7 @@ func (h *AnalyticsHandler) ListVisits(c *gin.Context) {
 	search := strings.TrimSpace(c.Query("search"))
 	device := strings.TrimSpace(c.Query("device"))
 	period := strings.TrimSpace(c.Query("period"))
-	includeAdmin := c.Query("include_admin") == "true"
+	includeAdmin := c.DefaultQuery("include_admin", "true") == "true"
 
 	query := h.db.Model(&models.Visit{})
 
