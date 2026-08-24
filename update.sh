@@ -27,7 +27,7 @@ cd "$PROJECT_DIR"
 if [ -f "$PROJECT_DIR/backend/ecommerce.db" ]; then
     mkdir -p "$PROJECT_DIR/backend/backups"
     cp "$PROJECT_DIR/backend/ecommerce.db" "$PROJECT_DIR/backend/backups/ecommerce_$(date +%Y%m%d_%H%M%S).bak" 2>/dev/null || true
-    cp "$PROJECT_DIR/backend/ecommerce.db" "$PROJECT_DIR/backend/.ecommerce.db.live" 2>/dev/null || true
+    cp "$PROJECT_DIR/backend/ecommerce.db" /tmp/ecommerce_db_live.tmp 2>/dev/null || true
 fi
 
 git fetch origin main
@@ -35,9 +35,9 @@ git checkout -f origin/main 2>/dev/null || git reset --hard origin/main 2>/dev/n
 git pull origin main
 
 # Restaurar base de datos viva para garantizar 0 pérdida de configuración y productos
-if [ -f "$PROJECT_DIR/backend/.ecommerce.db.live" ]; then
-    cp "$PROJECT_DIR/backend/.ecommerce.db.live" "$PROJECT_DIR/backend/ecommerce.db" 2>/dev/null || true
-    rm -f "$PROJECT_DIR/backend/.ecommerce.db.live" 2>/dev/null || true
+if [ -f /tmp/ecommerce_db_live.tmp ]; then
+    cp /tmp/ecommerce_db_live.tmp "$PROJECT_DIR/backend/ecommerce.db" 2>/dev/null || true
+    rm -f /tmp/ecommerce_db_live.tmp 2>/dev/null || true
 fi
 
 # 2. Asegurar permisos en directorio de subidas
