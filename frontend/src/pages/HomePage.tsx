@@ -45,54 +45,54 @@ export default function HomePage() {
     : products.filter(p => (p.category || 'general').toLowerCase() === selectedCategory.toLowerCase())
 
   // Dynamic Hero Height styles
-  const heroMinHeight = 
-    heroSize === 'compact' ? 'min-h-[28vh] sm:min-h-[35vh]' :
-    heroSize === 'full' ? 'min-h-[70vh] sm:min-h-[85vh]' :
-    'min-h-[38vh] sm:min-h-[46vh]' // default 'half'
+  const heroHeightClasses = 
+    heroSize === 'compact' ? 'h-[24vh] sm:h-[30vh] min-h-[180px] max-h-[290px]' :
+    heroSize === 'full' ? 'min-h-[75vh] sm:min-h-[85vh]' :
+    'h-[38vh] sm:h-[46vh] min-h-[260px] max-h-[440px]' // default 'half'
 
   const heroPadding = 
-    heroSize === 'compact' ? 'py-6 sm:py-8' :
+    heroSize === 'compact' ? 'py-4 sm:py-6' :
     heroSize === 'full' ? 'py-16 sm:py-24' :
-    'py-8 sm:py-12' // 'half'
+    'py-6 sm:py-10' // 'half'
 
   return (
     <div>
       {/* Hero Section (if not hidden) */}
       {heroSize !== 'hidden' && (
-        <section className={`hero-section ${heroMinHeight} flex items-center justify-center relative overflow-hidden bg-black transition-all duration-300`}>
-          <div className="absolute inset-0">
+        <section className={`hero-section ${heroHeightClasses} flex items-center justify-center relative overflow-hidden bg-black transition-all duration-300`}>
+          <div className="absolute inset-0 w-full h-full overflow-hidden">
             <img 
               src={heroImage} 
               alt={config?.name || "Hero Banner"}
-              className="w-full h-full object-cover opacity-50"
+              className="w-full h-full object-cover object-center opacity-50"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/25" />
           </div>
 
           <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.4 }}
             className={`hero-content relative z-10 text-center px-4 ${heroPadding} max-w-4xl mx-auto`}
           >
-            <span className="hero-subtitle text-[10px] sm:text-xs tracking-widest text-emerald-400 font-extrabold uppercase mb-1.5 block">
+            <span className="hero-subtitle text-[10px] sm:text-xs tracking-widest text-emerald-400 font-extrabold uppercase mb-1 block">
               {config?.name || 'TIENDA'} • Catálogo Digital
             </span>
-            <h2 className={`font-serif ${heroSize === 'compact' ? 'text-2xl sm:text-4xl mb-2' : heroSize === 'full' ? 'text-3xl sm:text-5xl md:text-6xl mb-4' : 'text-2xl sm:text-4xl md:text-5xl mb-3'} font-bold text-white leading-tight`}>
+            <h2 className={`font-serif ${heroSize === 'compact' ? 'text-xl sm:text-3xl mb-1.5' : heroSize === 'full' ? 'text-3xl sm:text-5xl md:text-6xl mb-4' : 'text-2xl sm:text-4xl md:text-5xl mb-2'} font-bold text-white leading-tight`}>
               {config?.hero_title || 'Emprende con Estilo'}
             </h2>
-            <p className={`opacity-90 ${heroSize === 'compact' ? 'text-xs sm:text-sm mb-4 line-clamp-2' : 'text-xs sm:text-base mb-6'} max-w-lg mx-auto text-slate-200 leading-relaxed`}>
+            <p className={`opacity-90 ${heroSize === 'compact' ? 'text-[11px] sm:text-xs mb-3 line-clamp-1' : 'text-xs sm:text-sm mb-4 sm:mb-5 line-clamp-2'} max-w-lg mx-auto text-slate-200 leading-relaxed`}>
               {config?.hero_subtitle || 'Descubre nuestra selección exclusiva. Haz tus pedidos de forma rápida y directa por WhatsApp.'}
             </p>
             <div className="flex flex-wrap gap-2.5 justify-center items-center">
-              <a href="#productos" className="btn-primary py-2.5 sm:py-3 px-5 sm:px-6 text-xs rounded-xl shadow-lg">
+              <a href="#productos" className="btn-primary py-2 sm:py-2.5 px-4 sm:px-5 text-xs rounded-xl shadow-lg">
                 Ver Catálogo
               </a>
               <a 
                 href={`https://wa.me/${phone}?text=${encodeURIComponent('¡Hola! Quisiera hacer una consulta sobre los productos de la tienda.')}`}
                 target="_blank" 
                 rel="noreferrer"
-                className="py-2.5 sm:py-3 px-4 sm:px-5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-900/30"
+                className="py-2 sm:py-2.5 px-3.5 sm:px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-900/30"
               >
                 <MessageCircle size={15} /> WhatsApp
               </a>
