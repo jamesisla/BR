@@ -3,8 +3,10 @@ import React, { createContext, useContext, useState, useEffect } from 'react'
 export interface CartItem {
   id: string
   name: string
+  slug?: string
   price: number
   quantity: number
+  stock: number
   image: string
 }
 
@@ -61,9 +63,11 @@ export const formatImageUrl = (url?: string) => {
 
 interface CartContextType {
   cart: CartItem[]
-  addToCart: (product: any, quantity: number) => void
+  addToCart: (product: any, quantity: number) => { success: boolean; message?: string }
+  updateQuantity: (productId: string, quantity: number) => void
   removeFromCart: (productId: string) => void
   clearCart: () => void
+  getItemQuantityInCart: (productId: string) => number
   totalItems: number
   totalPrice: number
   isCartOpen: boolean
@@ -141,23 +145,83 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('tienda_cart', JSON.stringify(cart))
   }, [cart])
 
-  const addToCart = (product: any, quantity: number) => {
+  const getItemQuantityInCart = (productId: string): number => {
+    const item = cart.find(i => i.id === productId)
+    return item ? item.quantity : 0
+  }
+
+  const addToCart = (product: any, quantity: number): { success: boolean; message?: string } => {
+    const productStock = typeof product.stock === 'number' ? product.stock : 10
+
+    if (productStock <= 0) {
+      alert(`⚠️ Lo sentimos, "${product.name}" se encuentra agotado actualmente.`)
+      return { success: false, message: 'Producto agotado' }
+    }
+
+    let addedSuccessfully = true
+    let warningMsg: string | undefined
+
     setCart(prevCart => {
       const existingItem = prevCart.find(item => item.id === product.id)
+      const currentQty = existingItem ? existingItem.quantity : 0
+      const totalRequested = currentQty + quantity
+
+      if (totalRequested > productStock) {
+        const availableToAdd = Math.max(0, productStock - currentQty)
+        if (availableToAdd <= 0) {
+          alert(`⚠️ Ya tienes el máximo disponible (${productStock} unidades) de "${product.name}" en tu carrito.`)
+          addedSuccessfully = false
+          return prevCart
+        } else {
+          alert(`⚠️ Solo se agregaron ${availableToAdd} unidad(es) de "${product.name}" porque el stock total es de ${productStock} unidades.`)
+          warningMsg = `Stock limitado a ${productStock}`
+        }
+      }
+
+      const finalQuantity = Math.min(productStock, totalRequested)
+
       if (existingItem) {
         return prevCart.map(item => 
           item.id === product.id 
-            ? { ...item, quantity: item.quantity + quantity }
+            ? { ...item, quantity: finalQuantity, stock: productStock }
             : item
         )
       }
+
+      const coverImg = (Array.isArray(product.images) && product.images.length > 0)
+        ? product.images[0]
+        : (product.image_url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=400&auto=format&fit=crop')
+
       return [...prevCart, {
         id: product.id,
         name: product.name,
+        slug: product.slug,
         price: Math.round(Number(product.base_price || 0)),
-        quantity: quantity,
-        image: product.image_url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=400&auto=format&fit=crop'
+        quantity: Math.min(productStock, quantity),
+        stock: productStock,
+        image: formatImageUrl(coverImg)
       }]
+    })
+
+    return { success: addedSuccessfully, message: warningMsg }
+  }
+
+  const updateQuantity = (productId: string, newQuantity: number) => {
+    setCart(prevCart => {
+      return prevCart.map(item => {
+        if (item.id === productId) {
+          const maxStock = typeof item.stock === 'number' ? item.stock : 999
+          if (newQuantity > maxStock) {
+            alert(`⚠️ No puedes agregar más de ${maxStock} unidades (límite de stock disponible).`)
+            return { ...item, quantity: maxStock }
+          }
+          if (newQuantity < 1) {
+            return { ...item, quantity: 1 }
+          }
+          return { ...item, quantity: newQuantity }
+        }
+        return item
+      })
     })
   }
 
@@ -199,8 +263,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     <CartContext.Provider value={{ 
       cart, 
       addToCart, 
+      updateQuantity,
       removeFromCart, 
       clearCart, 
+      getItemQuantityInCart,
       totalItems, 
       totalPrice, 
       isCartOpen, 

@@ -198,12 +198,18 @@ export default function HomePage() {
                         }}
                       />
 
-                      {/* Stock badge */}
-                      {product.stock <= 3 && product.stock > 0 && (
+                      {/* Stock badge & out of stock overlay */}
+                      {product.stock <= 0 ? (
+                        <div className="absolute inset-0 bg-black/50 backdrop-blur-[1px] flex items-center justify-center">
+                          <span className="bg-rose-600 text-white text-[9px] sm:text-xs font-bold px-3 py-1.5 rounded-xl uppercase tracking-wider shadow-lg">
+                            Agotado
+                          </span>
+                        </div>
+                      ) : product.stock <= 3 ? (
                         <span className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-amber-500 text-white text-[8px] sm:text-[10px] font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full uppercase shadow-sm">
                           ¡Últimas {product.stock}!
                         </span>
-                      )}
+                      ) : null}
 
                       {/* Multiple Photos Badge */}
                       {imageCount > 1 && (

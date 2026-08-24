@@ -75,7 +75,14 @@ export default function CheckoutPage() {
         window.open(waURL, '_blank')
         navigate(`/checkout/success`)
       } else {
-        // Si falla registro en API, igual permitir abrir WhatsApp
+        const errData = await response.json().catch(() => ({}))
+        if (errData.detail && (errData.detail.toLowerCase().includes('stock') || errData.detail.toLowerCase().includes('insuficiente'))) {
+          alert(`⚠️ ${errData.detail}\nPor favor ajusta las cantidades en tu carrito antes de continuar.`)
+          setLoading(false)
+          return
+        }
+
+        // Si es otro error de red, igual permitir procesar por WhatsApp
         const waURL = getWhatsAppOrderURL(deliveryType, {
           name: formData.name,
           address: fullAddress,

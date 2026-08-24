@@ -72,6 +72,19 @@ export default function CategoryPage() {
                           e.target.src = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=800&auto=format&fit=crop"
                         }}
                       />
+                      {/* Stock badge & out of stock overlay */}
+                      {product.stock <= 0 ? (
+                        <div className="absolute inset-0 bg-black/50 backdrop-blur-[1px] flex items-center justify-center">
+                          <span className="bg-rose-600 text-white text-[9px] sm:text-xs font-bold px-3 py-1.5 rounded-xl uppercase tracking-wider shadow-lg">
+                            Agotado
+                          </span>
+                        </div>
+                      ) : product.stock <= 3 ? (
+                        <span className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-amber-500 text-white text-[8px] sm:text-[10px] font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full uppercase shadow-sm">
+                          ¡Últimas {product.stock}!
+                        </span>
+                      ) : null}
+
                       {imageCount > 1 && (
                         <span className="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 bg-black/70 backdrop-blur-md text-white text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-lg flex items-center gap-1 shadow-sm">
                           <Images size={11} /> {imageCount}

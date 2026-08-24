@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import { useCart, formatCLP } from '../context/CartContext'
 
 export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
-  const { cart, removeFromCart, totalPrice, getWhatsAppOrderURL } = useCart()
+  const { cart, updateQuantity, removeFromCart, totalPrice, getWhatsAppOrderURL } = useCart()
   const [deliveryType, setDeliveryType] = useState<'envio' | 'retiro'>('envio')
 
   const handleWhatsAppCheckout = () => {
@@ -52,25 +52,75 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
                  </div>
                ) : (
                  <div className="flex flex-col gap-4">
-                    {cart.map(item => (
-                      <div key={item.id} className="flex gap-3 items-center bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                         <div className="w-16 h-20 bg-white rounded-xl overflow-hidden flex-shrink-0 border border-slate-100">
-                            <img src={item.image} className="w-full h-full object-cover" alt={item.name} />
-                         </div>
-                         <div className="flex-1 min-w-0">
-                            <h4 className="text-xs sm:text-sm font-bold text-slate-800 truncate mb-0.5">{item.name}</h4>
-                            <p className="text-[11px] text-slate-400 mb-1">Cant: {item.quantity} x {formatCLP(item.price)}</p>
-                            <span className="font-bold text-slate-900 text-sm">{formatCLP(item.price * item.quantity)}</span>
-                         </div>
-                         <button 
-                            onClick={() => removeFromCart(item.id)} 
-                            className="p-2 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Eliminar"
-                         >
-                            <Trash2 size={16} />
-                         </button>
-                      </div>
-                    ))}
+                    {cart.map(item => {
+                      const maxStock = typeof item.stock === 'number' ? item.stock : 999
+                      const isMaxReached = item.quantity >= maxStock
+
+                      return (
+                        <div key={item.id} className="flex gap-3 items-center bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                           <div className="w-16 h-20 bg-white rounded-xl overflow-hidden flex-shrink-0 border border-slate-100">
+                              <img src={item.image} className="w-full h-full object-cover" alt={item.name} />
+                           </div>
+                           <div className="flex-1 min-w-0">
+                              <h4 className="text-xs sm:text-sm font-bold text-slate-800 truncate mb-0.5">{item.name}</h4>
+                              <p className="text-[11px] text-slate-400 mb-1.5 font-mono">{formatCLP(item.price)} c/u</p>
+                              
+                              {/* Quantity Controls with Stock Bound */}
+                              <div className="flex items-center gap-2">
+                                <div className="flex items-center bg-white border border-slate-200 rounded-lg p-0.5 shadow-sm">
+                                  <button
+                                    onClick={() => {
+                                      if (item.quantity <= 1) {
+                                        removeFromCart(item.id)
+                                      } else {
+                                        updateQuantity(item.id, item.quantity - 1)
+                                      }
+                                    }}
+                                    className="w-6 h-6 flex items-center justify-center text-slate-500 hover:bg-slate-100 rounded text-xs font-bold"
+                                    title="Disminuir"
+                                  >
+                                    -
+                                  </button>
+                                  <span className="w-7 text-center font-mono font-bold text-xs text-slate-900">
+                                    {item.quantity}
+                                  </span>
+                                  <button
+                                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                    disabled={isMaxReached}
+                                    className={`w-6 h-6 flex items-center justify-center rounded text-xs font-bold ${
+                                      isMaxReached
+                                        ? 'text-slate-300 cursor-not-allowed bg-slate-50'
+                                        : 'text-slate-700 hover:bg-slate-100'
+                                    }`}
+                                    title={isMaxReached ? `Límite de stock alcanzado (${maxStock})` : 'Aumentar'}
+                                  >
+                                    +
+                                  </button>
+                                </div>
+
+                                {isMaxReached && (
+                                  <span className="text-[9px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/60">
+                                    Máx ({maxStock})
+                                  </span>
+                                )}
+                              </div>
+                           </div>
+
+                           <div className="flex flex-col items-end justify-between h-full py-1">
+                             <button 
+                                onClick={() => removeFromCart(item.id)} 
+                                className="p-1.5 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Eliminar"
+                             >
+                                <Trash2 size={15} />
+                             </button>
+                             <span className="font-bold text-slate-900 text-xs sm:text-sm font-mono mt-2">
+                               {formatCLP(item.price * item.quantity)}
+                             </span>
+                           </div>
+                        </div>
+                      )
+                    })}
                  </div>
                )}
             </div>

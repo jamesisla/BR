@@ -2,7 +2,8 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   ShoppingBag, ArrowLeft, MessageCircle, Truck, CreditCard, 
-  ShieldCheck, Check, ChevronLeft, ChevronRight, Maximize2, X, ZoomIn 
+  ShieldCheck, Check, ChevronLeft, ChevronRight, Maximize2, X, ZoomIn,
+  AlertCircle, AlertTriangle, Ban
 } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import { useCart, formatCLP, formatImageUrl } from '../context/CartContext'
@@ -27,7 +28,7 @@ export default function ProductDetailPage() {
   const [added, setAdded] = useState(false)
   const [activeImageIndex, setActiveImageIndex] = useState(0)
   const [isLightboxOpen, setIsLightboxOpen] = useState(false)
-  const { addToCart, setIsCartOpen, config } = useCart()
+  const { addToCart, setIsCartOpen, getItemQuantityInCart, config } = useCart()
 
   useEffect(() => {
     if (slug) {
@@ -37,6 +38,8 @@ export default function ProductDetailPage() {
           if (data.id) {
             setProduct(data)
             setActiveImageIndex(0)
+            const availableStock = typeof data.stock === 'number' ? data.stock : 10
+            setQuantity(availableStock <= 0 ? 0 : 1)
           }
           setLoading(false)
         })
@@ -46,6 +49,10 @@ export default function ProductDetailPage() {
         })
     }
   }, [slug])
+
+  const maxStock = typeof product?.stock === 'number' ? product.stock : 10
+  const isOutOfStock = maxStock <= 0
+  const inCartCount = product ? getItemQuantityInCart(product.id) : 0
 
   // Aggregate images safely
   const galleryImages: string[] = React.useMemo(() => {
@@ -85,10 +92,16 @@ export default function ProductDetailPage() {
 
   const handleAddToCart = () => {
     if (product) {
-      addToCart(product, quantity)
-      setAdded(true)
-      setTimeout(() => setAdded(false), 1500)
-      setIsCartOpen(true)
+      if (isOutOfStock) {
+        alert('⚠️ Este producto se encuentra agotado actualmente.')
+        return
+      }
+      const res = addToCart(product, quantity)
+      if (res.success) {
+        setAdded(true)
+        setTimeout(() => setAdded(false), 1500)
+        setIsCartOpen(true)
+      }
     }
   }
 
@@ -97,8 +110,14 @@ export default function ProductDetailPage() {
     const rawNumber = config?.whatsapp_number || '+56912345678'
     const phone = rawNumber.replace(/[^0-9]/g, '')
     const storeName = config?.name || 'la tienda'
-    const total = Math.round(Number(product.base_price || 0) * quantity)
 
+    if (isOutOfStock) {
+      const msg = `👋 ¡Hola! Me interesa saber cuándo tendrán nuevamente disponible el producto *${product.name}* en *${storeName}*. ¡Muchas gracias!`
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
+      return
+    }
+
+    const total = Math.round(Number(product.base_price || 0) * quantity)
     let msg = `👋 ¡Hola! Me interesa comprar este producto en *${storeName}*:\n\n`
     msg += `📦 *Producto:* ${product.name}\n`
     msg += `🔢 *Cantidad:* ${quantity}\n`
@@ -214,39 +233,84 @@ export default function ProductDetailPage() {
               {product.name}
             </h1>
 
-            {/* Price */}
-            <p className="text-3xl sm:text-4xl font-bold text-slate-900 mb-6 font-mono" style={{ color: 'var(--primary)' }}>
-              {formatCLP(Number(product.base_price || 0) * quantity)}
-              {quantity > 1 && (
-                <span className="text-xs text-slate-400 font-sans font-normal ml-2">
-                  ({formatCLP(product.base_price)} c/u)
-                </span>
+            {/* Price and Stock Badge */}
+            <div className="flex flex-wrap items-baseline gap-3 mb-2">
+              <p className="text-3xl sm:text-4xl font-bold text-slate-900 font-mono" style={{ color: 'var(--primary)' }}>
+                {formatCLP(Number(product.base_price || 0) * (isOutOfStock ? 1 : quantity))}
+                {quantity > 1 && !isOutOfStock && (
+                  <span className="text-xs text-slate-400 font-sans font-normal ml-2">
+                    ({formatCLP(product.base_price)} c/u)
+                  </span>
+                )}
+              </p>
+            </div>
+
+            {/* Stock status alert badge */}
+            <div className="mb-5">
+              {isOutOfStock ? (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold rounded-xl">
+                  <Ban size={14} />
+                  <span>Agotado / Sin Stock disponible</span>
+                </div>
+              ) : maxStock <= 5 ? (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold rounded-xl">
+                  <AlertTriangle size={14} className="text-amber-600" />
+                  <span>¡Últimas {maxStock} unidades disponibles en stock!</span>
+                  {inCartCount > 0 && <span className="opacity-75 font-normal">({inCartCount} en tu carrito)</span>}
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-xl">
+                  <Check size={14} className="text-emerald-600" />
+                  <span>Stock disponible: {maxStock} unidades</span>
+                  {inCartCount > 0 && <span className="opacity-75 font-normal">({inCartCount} en tu carrito)</span>}
+                </div>
               )}
-            </p>
+            </div>
 
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 mb-6 text-xs text-slate-600 leading-relaxed whitespace-pre-line">
               {product.description || "Producto de excelente calidad. Stock garantizado para envío inmediato o retiro."}
             </div>
 
-            {/* Quantity Selector */}
+            {/* Quantity Selector with Stock Limits */}
             <div className="mb-6">
-               <span className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-2">Cantidad</span>
+               <div className="flex items-center justify-between mb-2">
+                 <span className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Cantidad</span>
+                 {!isOutOfStock && (
+                   <span className="text-[11px] text-slate-500 font-mono">
+                     Máx permitido: <strong className="text-slate-800">{maxStock}</strong>
+                   </span>
+                 )}
+               </div>
                <div className="flex items-center gap-4">
-                  <div className="flex items-center bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+                  <div className={`flex items-center bg-white border rounded-xl p-1 shadow-sm ${isOutOfStock ? 'border-slate-100 opacity-50' : 'border-slate-200'}`}>
                      <button 
                        onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                       className="w-10 h-10 flex items-center justify-center text-slate-500 hover:bg-slate-100 rounded-lg font-bold text-lg"
+                       disabled={quantity <= 1 || isOutOfStock}
+                       className={`w-10 h-10 flex items-center justify-center rounded-lg font-bold text-lg ${
+                         quantity <= 1 || isOutOfStock ? 'text-slate-300 cursor-not-allowed' : 'text-slate-500 hover:bg-slate-100'
+                       }`}
                      >
                        -
                      </button>
-                     <span className="w-12 text-center font-bold text-base text-slate-900">{quantity}</span>
+                     <span className="w-12 text-center font-bold text-base text-slate-900 font-mono">
+                       {isOutOfStock ? 0 : quantity}
+                     </span>
                      <button 
-                       onClick={() => setQuantity(q => q + 1)}
-                       className="w-10 h-10 flex items-center justify-center text-slate-500 hover:bg-slate-100 rounded-lg font-bold text-lg"
+                       onClick={() => setQuantity(q => Math.min(maxStock, q + 1))}
+                       disabled={quantity >= maxStock || isOutOfStock}
+                       className={`w-10 h-10 flex items-center justify-center rounded-lg font-bold text-lg ${
+                         quantity >= maxStock || isOutOfStock ? 'text-slate-300 cursor-not-allowed' : 'text-slate-500 hover:bg-slate-100'
+                       }`}
+                       title={quantity >= maxStock ? `Máximo ${maxStock} disponibles` : 'Aumentar'}
                      >
                        +
                      </button>
                   </div>
+                  {quantity >= maxStock && !isOutOfStock && (
+                    <span className="text-xs text-amber-600 font-medium">
+                      Límite de stock alcanzado
+                    </span>
+                  )}
                </div>
             </div>
 
@@ -254,16 +318,31 @@ export default function ProductDetailPage() {
             <div className="flex flex-col sm:flex-row gap-3 mb-8">
                <button 
                  onClick={handleDirectWhatsApp}
-                 className="flex-1 py-4 px-6 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all"
+                 className={`flex-1 py-4 px-6 text-white font-bold text-xs uppercase tracking-wider rounded-2xl shadow-lg flex items-center justify-center gap-2 transition-all ${
+                   isOutOfStock 
+                     ? 'bg-slate-800 hover:bg-slate-900' 
+                     : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
+                 }`}
                >
-                 <MessageCircle size={18} /> Pedir Directo por WhatsApp
+                 <MessageCircle size={18} /> {isOutOfStock ? 'Consultar Disponibilidad por WhatsApp' : 'Pedir Directo por WhatsApp'}
                </button>
 
                <button 
                  onClick={handleAddToCart}
-                 className="py-4 px-6 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider rounded-2xl shadow-lg flex items-center justify-center gap-2 transition-all"
+                 disabled={isOutOfStock}
+                 className={`py-4 px-6 text-white font-bold text-xs uppercase tracking-wider rounded-2xl shadow-lg flex items-center justify-center gap-2 transition-all ${
+                   isOutOfStock 
+                     ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' 
+                     : 'bg-slate-900 hover:bg-slate-800'
+                 }`}
                >
-                 {added ? <><Check size={18} /> ¡Agregado!</> : <><ShoppingBag size={18} /> Al Carrito</>}
+                 {isOutOfStock ? (
+                   <><Ban size={18} /> Agotado</>
+                 ) : added ? (
+                   <><Check size={18} /> ¡Agregado!</>
+                 ) : (
+                   <><ShoppingBag size={18} /> Al Carrito</>
+                 )}
                </button>
             </div>
 
