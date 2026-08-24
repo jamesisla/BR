@@ -4,13 +4,21 @@
 
 ---
 
+## 🏷️ Versión Estable
+> **Release:** `v1.0.0-sin-pago-electronico`  
+> **Modo:** Tienda Catálogo Digital con Pedidos por WhatsApp y Transferencia Bancaria (Sin pasarela de pago electrónico).
+
+---
+
 ## ✨ Características Principales
 - 🐹 **Backend Nativo en Go (Golang):** Consumo ultrabajo de memoria (~15-20 MB RAM), alta concurrencia y tiempos de respuesta de microsegundos.
-- 🎨 **Panel Administrativo Total (Wizard):** Personaliza el nombre de la tienda, logo, colores de marca, textos del pie de página, título, subtítulo e imagen de portada (Hero) sin tocar código.
-- 📦 **Gestión de Catálogo e Inventario:** Control de stock con descuento atómico en cada compra, estados de pedidos (`pending`, `paid`, `shipped`, `cancelled`) y categorías personalizables.
-- 💳 **Pagos con Mercado Pago:** Integración lista para producción con Checkout Pro y Webhook para actualización automática de pedidos a "Pagado".
-- ⚡ **Instalador Nativo en 1 Comando para OCI:** Script `install.sh` que configura automáticamente Swap, dependencias (Go, Node 20, Caddy), firewall y servicios `systemd`.
-- 🔄 **Actualizador Nativo en 1 Comando:** Script `update.sh` que descarga los cambios desde GitHub y recompila en caliente.
+- 🎨 **Panel Administrativo Total (Wizard):** Personaliza nombre, logo, colores, favicon, textos, título, subtítulo, altura del Hero banner (mitad de pantalla, compacto, pantalla completa u ocultar) y WhatsApp de contacto.
+- 📸 **Galería Multi-Foto & Lightbox Fullscreen:** Múltiples imágenes por producto, selector de foto de portada principal y visor Lightbox con zoom y navegación por teclado.
+- 📦 **Control Estricto de Stock e Inventario:** Topes de cantidad en fichas y carrito según existencias disponibles, badges dinámicos (`¡Últimas X!`, `Agotado`) y consultas de reposición automáticas.
+- 📊 **Motor de Visitas y Analítica en Vivo:** Métricas detalladas de visitas, visitantes únicos, gráficos de tendencias, desglose por dispositivos, navegadores, países y ciudades, exportación CSV y purga configurable.
+- 🏆 **Rendimiento de Catálogo y Ranking de Productos:** Monitoreo en tiempo real de qué productos se visualizan más, visitantes únicos por producto y producto estrella del catálogo.
+- 💬 **Checkout Optimizado por WhatsApp & Transferencia:** Envío de pedidos estructurados a WhatsApp con detalles de entrega (domicilio o retiro) y datos bancarios para transferencia (CuentaRUT / Cta Corriente).
+- ⚡ **Despliegue Nativo en 1 Comando para OCI:** Scripts `install.sh` y `update.sh` optimizados para Ubuntu Always Free (1 vCPU, 1 GB RAM).
 
 ---
 
