@@ -31,8 +31,17 @@ import {
   Eye,
   AlertTriangle,
   CheckCircle2,
-  Share2
+  Share2,
+  Package,
+  Trophy,
+  ExternalLink,
+  ShoppingBag,
+  Tag,
+  Sparkles,
+  Flame,
+  Star
 } from 'lucide-react'
+import { formatCLP, formatImageUrl } from '../context/CartContext'
 import VisitDetailModal from './VisitDetailModal'
 
 interface AdminAnalyticsTabProps {
@@ -58,6 +67,10 @@ export default function AdminAnalyticsTab({ onSettingsUpdated }: AdminAnalyticsT
   const [searchQuery, setSearchQuery] = useState('')
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [togglingTracking, setTogglingTracking] = useState(false)
+
+  // Product Metrics Search & Filter
+  const [productSearch, setProductSearch] = useState('')
+  const [productFilter, setProductFilter] = useState<'all' | 'with_views' | 'no_views'>('all')
   
   // Modals
   const [selectedVisit, setSelectedVisit] = useState<any | null>(null)
@@ -67,6 +80,21 @@ export default function AdminAnalyticsTab({ onSettingsUpdated }: AdminAnalyticsT
 
   // Hovered Chart Day
   const [hoveredTrend, setHoveredTrend] = useState<any | null>(null)
+
+  const formatRelativeTime = (dateStr?: string) => {
+    if (!dateStr) return 'Sin visitas aún'
+    try {
+      const d = new Date(dateStr)
+      const now = new Date()
+      const diffSec = Math.floor((now.getTime() - d.getTime()) / 1000)
+      if (diffSec < 60) return 'Hace un momento'
+      if (diffSec < 3600) return `Hace ${Math.floor(diffSec / 60)} min`
+      if (diffSec < 86400) return `Hace ${Math.floor(diffSec / 3600)} h`
+      return d.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+    } catch {
+      return dateStr
+    }
+  }
 
   // Fetch Summary and Visits
   const fetchSummary = async (selectedPeriod = period) => {
@@ -419,6 +447,285 @@ export default function AdminAnalyticsTab({ onSettingsUpdated }: AdminAnalyticsT
           </div>
         )}
       </div>
+
+      {/* SECCIÓN DE MÉTRICAS Y POPULARIDAD POR PRODUCTO */}
+      {(() => {
+        const productList: any[] = summary?.top_products || []
+        let list = productList
+        if (productFilter === 'with_views') {
+          list = list.filter((p: any) => p.views > 0)
+        } else if (productFilter === 'no_views') {
+          list = list.filter((p: any) => p.views === 0)
+        }
+        if (productSearch.trim()) {
+          const q = productSearch.toLowerCase().trim()
+          list = list.filter((p: any) => 
+            (p.name && p.name.toLowerCase().includes(q)) || 
+            (p.category && p.category.toLowerCase().includes(q)) ||
+            (p.slug && p.slug.toLowerCase().includes(q))
+          )
+        }
+
+        const topProductStar = productList.length > 0 && productList[0].views > 0 
+          ? productList[0] 
+          : null
+
+        return (
+          <div className="bg-white p-5 sm:p-7 rounded-3xl border border-slate-100 shadow-sm space-y-6">
+            {/* Section Header */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="p-2 bg-amber-50 text-amber-600 rounded-xl">
+                    <Trophy size={18} />
+                  </div>
+                  <h3 className="font-bold text-base sm:text-lg text-slate-900">
+                    Rendimiento y Métricas de Productos Publicados
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-400">
+                  Visualiza qué productos despiertan mayor interés en tus clientes, cuántas visitas reciben y cuáles son los más populares del catálogo.
+                </p>
+              </div>
+
+              {/* Quick Filters */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={productSearch}
+                    onChange={(e) => setProductSearch(e.target.value)}
+                    placeholder="Buscar producto o categoría..."
+                    className="pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs w-48 sm:w-56"
+                  />
+                </div>
+
+                <div className="flex bg-slate-100 p-1 rounded-xl gap-1 text-[11px] font-bold">
+                  <button
+                    onClick={() => setProductFilter('all')}
+                    className={`px-2.5 py-1 rounded-lg transition-all ${
+                      productFilter === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    Todos ({productList.length})
+                  </button>
+                  <button
+                    onClick={() => setProductFilter('with_views')}
+                    className={`px-2.5 py-1 rounded-lg transition-all ${
+                      productFilter === 'with_views' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    Con Visitas ({productList.filter((p: any) => p.views > 0).length})
+                  </button>
+                  <button
+                    onClick={() => setProductFilter('no_views')}
+                    className={`px-2.5 py-1 rounded-lg transition-all ${
+                      productFilter === 'no_views' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    Sin Visitas ({productList.filter((p: any) => p.views === 0).length})
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Highlights Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Producto Estrella Card */}
+              <div className="p-4 bg-gradient-to-br from-amber-500/10 via-amber-50/40 to-white border border-amber-200/80 rounded-2xl flex items-center gap-4">
+                <div className="w-16 h-16 rounded-xl overflow-hidden bg-white border border-amber-200 flex-shrink-0 relative shadow-sm">
+                  {topProductStar ? (
+                    <img
+                      src={formatImageUrl(topProductStar.image_url) || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=200&auto=format&fit=crop"}
+                      alt={topProductStar.name}
+                      className="w-full h-full object-cover"
+                      onError={(e: any) => {
+                        e.target.src = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=200&auto=format&fit=crop"
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-amber-400">
+                      <Package size={24} />
+                    </div>
+                  )}
+                  <span className="absolute top-0.5 left-0.5 bg-amber-500 text-white text-[8px] font-bold px-1 rounded shadow-sm">
+                    #1
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-amber-700 flex items-center gap-1">
+                    <Flame size={12} className="fill-amber-500 text-amber-500" /> Más Visto
+                  </span>
+                  <h4 className="font-bold text-sm text-slate-900 truncate">
+                    {topProductStar ? topProductStar.name : 'Sin visitas registradas'}
+                  </h4>
+                  <p className="text-xs text-slate-500 font-mono mt-0.5">
+                    {topProductStar ? (
+                      <span className="font-bold text-amber-900">
+                        {topProductStar.views} visitas ({Math.round(topProductStar.percentage || 0)}% del catálogo)
+                      </span>
+                    ) : (
+                      'Comparte tus enlaces'
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {/* Total Product Views Card */}
+              <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-2xl flex items-center gap-4">
+                <div className="p-3 bg-blue-500 text-white rounded-xl shadow-sm">
+                  <Eye size={20} />
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-blue-700">
+                    Visualizaciones a Productos
+                  </span>
+                  <h4 className="font-bold text-xl text-slate-900 font-mono">
+                    {summary?.total_product_views || 0}
+                  </h4>
+                  <p className="text-[11px] text-slate-400">
+                    Interacciones directas con fichas
+                  </p>
+                </div>
+              </div>
+
+              {/* Catálogo con Vistas Card */}
+              <div className="p-4 bg-emerald-50/50 border border-emerald-100 rounded-2xl flex items-center gap-4">
+                <div className="p-3 bg-emerald-600 text-white rounded-xl shadow-sm">
+                  <ShoppingBag size={20} />
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-700">
+                    Cobertura del Catálogo
+                  </span>
+                  <h4 className="font-bold text-xl text-slate-900 font-mono">
+                    {productList.filter((p: any) => p.views > 0).length} / {productList.length}
+                  </h4>
+                  <p className="text-[11px] text-slate-400">
+                    Productos descubiertos por clientes
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Product Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-100 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                    <th className="py-3 px-3">#</th>
+                    <th className="py-3 px-3">Producto</th>
+                    <th className="py-3 px-3">Categoría</th>
+                    <th className="py-3 px-3">Precio</th>
+                    <th className="py-3 px-3">Vistas Totales</th>
+                    <th className="py-3 px-3">Clientes Únicos</th>
+                    <th className="py-3 px-3">Última Visualización</th>
+                    <th className="py-3 px-3 text-right">Acción</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs">
+                  {list.length > 0 ? (
+                    list.map((prod: any, idx: number) => {
+                      const isStar = idx === 0 && prod.views > 0
+                      return (
+                        <tr key={prod.id || idx} className="hover:bg-slate-50/80 transition-colors group">
+                          <td className="py-3 px-3 font-mono font-bold text-slate-400">
+                            {isStar ? (
+                              <span className="text-amber-500 flex items-center" title="Producto Más Visto">
+                                <Star size={14} className="fill-current" />
+                              </span>
+                            ) : (
+                              `#${idx + 1}`
+                            )}
+                          </td>
+                          <td className="py-3 px-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-12 rounded-lg bg-slate-100 overflow-hidden border border-slate-200 flex-shrink-0">
+                                <img
+                                  src={formatImageUrl(prod.image_url) || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=150&auto=format&fit=crop"}
+                                  alt={prod.name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e: any) => {
+                                    e.target.src = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=150&auto=format&fit=crop"
+                                  }}
+                                />
+                              </div>
+                              <div>
+                                <span className="font-bold text-slate-900 block group-hover:text-emerald-600 transition-colors">
+                                  {prod.name}
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-mono">
+                                  /{prod.slug}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md font-bold text-[10px] capitalize">
+                              {prod.category || 'general'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 font-mono font-bold text-slate-800">
+                            {prod.base_price ? formatCLP(prod.base_price) : '-'}
+                          </td>
+                          <td className="py-3 px-3">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono font-bold text-slate-900">
+                                  {prod.views}
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-mono">
+                                  ({Math.round(prod.percentage || 0)}%)
+                                </span>
+                              </div>
+                              <div className="w-24 bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                                <div
+                                  className="bg-emerald-500 h-full rounded-full transition-all"
+                                  style={{ width: `${Math.max(prod.views > 0 ? 5 : 0, prod.percentage || 0)}%` }}
+                                />
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3 font-mono text-slate-600">
+                            {prod.unique_visitors > 0 ? (
+                              <span className="flex items-center gap-1 font-semibold text-slate-700">
+                                <Users size={12} className="text-purple-500" /> {prod.unique_visitors}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">-</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 font-mono text-[11px] text-slate-500">
+                            {formatRelativeTime(prod.last_viewed_at)}
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            <a
+                              href={`/product/${prod.slug}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-600 hover:text-emerald-600 px-2.5 py-1 bg-slate-100 hover:bg-emerald-50 rounded-lg transition-colors"
+                            >
+                              <span>Ver</span>
+                              <ExternalLink size={12} />
+                            </a>
+                          </td>
+                        </tr>
+                      )
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={8} className="text-center py-10 text-slate-400 font-medium">
+                        No se encontraron productos coincidentes con los filtros.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Breakdowns Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">

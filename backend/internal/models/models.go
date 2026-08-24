@@ -237,6 +237,8 @@ type AnalyticsSummary struct {
 	AvgDurationSeconds int                      `json:"avg_duration_seconds"`
 	AnalyticsEnabled   bool                     `json:"analytics_enabled"`
 	Trends             []AnalyticsTrendItem     `json:"trends"`
+	TopProducts        []ProductMetricItem      `json:"top_products"`
+	TotalProductViews  int64                    `json:"total_product_views"`
 	TopDevices         []AnalyticsBreakdownItem `json:"top_devices"`
 	TopBrowsers        []AnalyticsBreakdownItem `json:"top_browsers"`
 	TopOS              []AnalyticsBreakdownItem `json:"top_os"`
@@ -245,6 +247,22 @@ type AnalyticsSummary struct {
 	TopCountries       []AnalyticsBreakdownItem `json:"top_countries"`
 	TopCities          []AnalyticsBreakdownItem `json:"top_cities"`
 	TopCampaigns       []AnalyticsCampaignItem  `json:"top_campaigns"`
+}
+
+// ProductMetricItem represents views and engagement stats for published products
+type ProductMetricItem struct {
+	ID             string     `json:"id"`
+	Name           string     `json:"name"`
+	Slug           string     `json:"slug"`
+	Category       string     `json:"category"`
+	BasePrice      float64    `json:"base_price"`
+	ImageURL       string     `json:"image_url"`
+	Views          int64      `json:"views"`
+	UniqueVisitors int64      `json:"unique_visitors"`
+	Percentage     float64    `json:"percentage"`
+	LastViewedAt   *time.Time `json:"last_viewed_at,omitempty"`
+	Stock          int        `json:"stock"`
+	IsActive       bool       `json:"is_active"`
 }
 
 // AnalyticsTrendItem represents a point in the time-series chart

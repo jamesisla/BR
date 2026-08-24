@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -220,6 +221,7 @@ func (h *AnalyticsHandler) GetSummary(c *gin.Context) {
 	summary := models.AnalyticsSummary{
 		AnalyticsEnabled: analyticsEnabled,
 		Trends:           make([]models.AnalyticsTrendItem, 0),
+		TopProducts:      make([]models.ProductMetricItem, 0),
 		TopDevices:       make([]models.AnalyticsBreakdownItem, 0),
 		TopBrowsers:      make([]models.AnalyticsBreakdownItem, 0),
 		TopOS:            make([]models.AnalyticsBreakdownItem, 0),
@@ -360,6 +362,118 @@ func (h *AnalyticsHandler) GetSummary(c *gin.Context) {
 			Percentage: pct,
 		})
 	}
+
+	// 8.1. Published Products Performance & View Metrics
+	var allProducts []models.Product
+	h.db.Find(&allProducts)
+
+	type ProdViewStat struct {
+		Path           string     `gorm:"column:path"`
+		Views          int64      `gorm:"column:views"`
+		UniqueVisitors int64      `gorm:"column:unique_visitors"`
+		LastViewed     *time.Time `gorm:"column:last_viewed"`
+	}
+	var prodViewStats []ProdViewStat
+	h.getFilteredQuery(period, !ignoreAdmin).
+		Select("path, count(*) as views, count(distinct visitor_id) as unique_visitors, max(created_at) as last_viewed").
+		Where("path LIKE '/product/%'").
+		Group("path").
+		Scan(&prodViewStats)
+
+	// Map of slug/id -> stats
+	statsBySlug := make(map[string]ProdViewStat)
+	var totalProductViews int64
+	for _, row := range prodViewStats {
+		slug := strings.TrimPrefix(row.Path, "/product/")
+		slug = strings.Split(slug, "?")[0]
+		slug = strings.Trim(slug, "/")
+		if slug != "" {
+			existing := statsBySlug[slug]
+			existing.Views += row.Views
+			existing.UniqueVisitors += row.UniqueVisitors
+			if existing.LastViewed == nil || (row.LastViewed != nil && row.LastViewed.After(*existing.LastViewed)) {
+				existing.LastViewed = row.LastViewed
+			}
+			statsBySlug[slug] = existing
+			totalProductViews += row.Views
+		}
+	}
+	summary.TotalProductViews = totalProductViews
+
+	// Build productMetrics list for all catalog products
+	matchedSlugs := make(map[string]bool)
+	var productMetrics []models.ProductMetricItem
+
+	for _, prod := range allProducts {
+		stat, hasStat := statsBySlug[prod.Slug]
+		if !hasStat {
+			stat = statsBySlug[prod.ID]
+			if stat.Views > 0 {
+				matchedSlugs[prod.ID] = true
+			}
+		} else {
+			matchedSlugs[prod.Slug] = true
+		}
+
+		pct := float64(0)
+		if totalProductViews > 0 && stat.Views > 0 {
+			pct = (float64(stat.Views) / float64(totalProductViews)) * 100
+		}
+
+		img := prod.ImageURL
+		if len(prod.ImagesList) > 0 {
+			img = prod.ImagesList[0]
+		}
+
+		productMetrics = append(productMetrics, models.ProductMetricItem{
+			ID:             prod.ID,
+			Name:           prod.Name,
+			Slug:           prod.Slug,
+			Category:       prod.Category,
+			BasePrice:      prod.BasePrice,
+			ImageURL:       img,
+			Views:          stat.Views,
+			UniqueVisitors: stat.UniqueVisitors,
+			Percentage:     pct,
+			LastViewedAt:   stat.LastViewed,
+			Stock:          prod.Stock,
+			IsActive:       prod.IsActive,
+		})
+	}
+
+	// Add any views for product slugs that might not exist in products table
+	for slug, stat := range statsBySlug {
+		if !matchedSlugs[slug] && stat.Views > 0 {
+			pct := float64(0)
+			if totalProductViews > 0 {
+				pct = (float64(stat.Views) / float64(totalProductViews)) * 100
+			}
+			productMetrics = append(productMetrics, models.ProductMetricItem{
+				ID:             slug,
+				Name:           "Producto: " + slug,
+				Slug:           slug,
+				Category:       "catalogo",
+				Views:          stat.Views,
+				UniqueVisitors: stat.UniqueVisitors,
+				Percentage:     pct,
+				LastViewedAt:   stat.LastViewed,
+				IsActive:       true,
+			})
+		}
+	}
+
+	// Sort products: Views DESC, then UniqueVisitors DESC, then Name ASC
+	sort.Slice(productMetrics, func(i, j int) bool {
+		if productMetrics[i].Views != productMetrics[j].Views {
+			return productMetrics[i].Views > productMetrics[j].Views
+		}
+		if productMetrics[i].UniqueVisitors != productMetrics[j].UniqueVisitors {
+			return productMetrics[i].UniqueVisitors > productMetrics[j].UniqueVisitors
+		}
+		return productMetrics[i].Name < productMetrics[j].Name
+	})
+
+	summary.TopProducts = productMetrics
 
 	// 9. Top Referrers
 	var refCounts []CatCount
