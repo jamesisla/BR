@@ -46,7 +46,7 @@ if [ -n "$SUDO_USER" ]; then
 fi
 
 echo -e "\n${YELLOW}🚀 Reiniciando servicio 'tienda.service'...${NC}"
-systemctl daemon-reload 2>/dev/null || true
-systemctl restart tienda.service
+sudo systemctl daemon-reload 2>/dev/null || systemctl daemon-reload 2>/dev/null || true
+sudo systemctl restart tienda.service || systemctl restart tienda.service
 
 echo -e "\n${GREEN}✅ ¡Tienda actualizada y en línea exitosamente!${NC}"
