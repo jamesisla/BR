@@ -121,6 +121,7 @@ func seedInitialData(db *gorm.DB) {
 			PrimaryColor:      "#2d1b0e",
 			SecondaryColor:    "#9c6644",
 			FooterText:        "© 2026 Tienda Demo. Venta directa por WhatsApp.",
+			HeroSize:          "half",
 			HeroTitle:         "Emprende con Estilo",
 			HeroSubtitle:      "Catálogo digital para PYMEs. Haz tu pedido directo por WhatsApp con transferencia.",
 			HeroImageURL:      "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=2000&auto=format&fit=crop",

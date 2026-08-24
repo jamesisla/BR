@@ -1,6 +1,9 @@
-import React, { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
-import { ShoppingBag, ArrowLeft, MessageCircle, Truck, CreditCard, ShieldCheck, Check, Store } from 'lucide-react'
+import React, { useEffect, useState, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { 
+  ShoppingBag, ArrowLeft, MessageCircle, Truck, CreditCard, 
+  ShieldCheck, Check, ChevronLeft, ChevronRight, Maximize2, X, ZoomIn 
+} from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import { useCart, formatCLP, formatImageUrl } from '../context/CartContext'
 
@@ -11,6 +14,7 @@ interface Product {
   base_price: number
   slug: string
   image_url?: string
+  images?: string[]
   stock: number
   category?: string
 }
@@ -21,6 +25,8 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true)
   const [quantity, setQuantity] = useState(1)
   const [added, setAdded] = useState(false)
+  const [activeImageIndex, setActiveImageIndex] = useState(0)
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false)
   const { addToCart, setIsCartOpen, config } = useCart()
 
   useEffect(() => {
@@ -28,7 +34,10 @@ export default function ProductDetailPage() {
       fetch(`/api/products/${slug}`)
         .then(res => res.json())
         .then(data => {
-          if (data.id) setProduct(data)
+          if (data.id) {
+            setProduct(data)
+            setActiveImageIndex(0)
+          }
           setLoading(false)
         })
         .catch(err => {
@@ -37,6 +46,42 @@ export default function ProductDetailPage() {
         })
     }
   }, [slug])
+
+  // Aggregate images safely
+  const galleryImages: string[] = React.useMemo(() => {
+    if (!product) return []
+    if (Array.isArray(product.images) && product.images.length > 0) {
+      return product.images.map(img => formatImageUrl(img)).filter(Boolean)
+    }
+    if (product.image_url) {
+      return [formatImageUrl(product.image_url)]
+    }
+    return ["https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=1200&auto=format&fit=crop"]
+  }, [product])
+
+  const currentImage = galleryImages[activeImageIndex] || galleryImages[0]
+
+  const nextImage = useCallback((e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    setActiveImageIndex(prev => (prev + 1) % galleryImages.length)
+  }, [galleryImages.length])
+
+  const prevImage = useCallback((e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    setActiveImageIndex(prev => (prev - 1 + galleryImages.length) % galleryImages.length)
+  }, [galleryImages.length])
+
+  // Keyboard navigation for Lightbox
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isLightboxOpen) return
+      if (e.key === 'Escape') setIsLightboxOpen(false)
+      if (e.key === 'ArrowRight') nextImage()
+      if (e.key === 'ArrowLeft') prevImage()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isLightboxOpen, nextImage, prevImage])
 
   const handleAddToCart = () => {
     if (product) {
@@ -85,24 +130,76 @@ export default function ProductDetailPage() {
           <ArrowLeft size={16} /> Volver al Catálogo
         </Link>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 sm:gap-14 items-start">
-          {/* Product Image */}
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="w-full"
-          >
-            <div className="aspect-[4/5] bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-lg">
-               <img 
-                 src={formatImageUrl(product.image_url) || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=1200&auto=format&fit=crop"} 
-                 alt={product.name}
-                 className="w-full h-full object-cover"
-                 onError={(e: any) => {
-                   e.target.src = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=1200&auto=format&fit=crop"
-                 }}
-               />
-            </div>
-          </motion.div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-14 items-start">
+          {/* Product Image Gallery */}
+          <div className="w-full space-y-4">
+            {/* Main Interactive Image Frame */}
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="relative aspect-[4/5] bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-lg group cursor-zoom-in"
+              onClick={() => setIsLightboxOpen(true)}
+            >
+              <img 
+                key={currentImage}
+                src={currentImage} 
+                alt={`${product.name} - Foto ${activeImageIndex + 1}`}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                onError={(e: any) => {
+                  e.target.src = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=1200&auto=format&fit=crop"
+                }}
+              />
+
+              {/* Zoom badge indicator */}
+              <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-md text-white text-[11px] font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 opacity-90 group-hover:opacity-100 transition-opacity shadow-lg">
+                <Maximize2 size={13} />
+                <span>Ver en grande</span>
+              </div>
+
+              {/* Prev / Next Arrows if multiple photos */}
+              {galleryImages.length > 1 && (
+                <>
+                  <button
+                    onClick={prevImage}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-slate-900 shadow-md flex items-center justify-center transition-all opacity-80 group-hover:opacity-100"
+                    title="Foto anterior"
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
+                  <button
+                    onClick={nextImage}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-slate-900 shadow-md flex items-center justify-center transition-all opacity-80 group-hover:opacity-100"
+                    title="Siguiente foto"
+                  >
+                    <ChevronRight size={20} />
+                  </button>
+                </>
+              )}
+            </motion.div>
+
+            {/* Thumbnails Carousel (when 2+ images) */}
+            {galleryImages.length > 1 && (
+              <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
+                {galleryImages.map((img, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setActiveImageIndex(idx)}
+                    className={`relative w-16 h-20 sm:w-20 sm:h-24 rounded-2xl overflow-hidden flex-shrink-0 transition-all border-2 ${
+                      idx === activeImageIndex 
+                        ? 'border-slate-900 ring-2 ring-slate-900/20 scale-105 shadow-md' 
+                        : 'border-transparent opacity-60 hover:opacity-100'
+                    }`}
+                  >
+                    <img 
+                      src={img} 
+                      alt={`Miniatura ${idx + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Product Details */}
           <motion.div
@@ -127,7 +224,7 @@ export default function ProductDetailPage() {
               )}
             </p>
 
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 mb-6 text-xs text-slate-600 leading-relaxed">
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 mb-6 text-xs text-slate-600 leading-relaxed whitespace-pre-line">
               {product.description || "Producto de excelente calidad. Stock garantizado para envío inmediato o retiro."}
             </div>
 
@@ -195,6 +292,81 @@ export default function ProductDetailPage() {
           </motion.div>
         </div>
       </div>
+
+      {/* Fullscreen High-Resolution Lightbox Modal */}
+      <AnimatePresence>
+        {isLightboxOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-md p-4 sm:p-8 select-none">
+            {/* Close button */}
+            <button
+              onClick={() => setIsLightboxOpen(false)}
+              className="absolute top-4 right-4 sm:top-6 sm:right-6 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all z-20"
+              title="Cerrar (Esc)"
+            >
+              <X size={24} />
+            </button>
+
+            {/* Counter badge */}
+            <div className="absolute top-4 left-4 sm:top-6 sm:left-6 text-white/80 font-mono text-xs px-3 py-1 bg-white/10 rounded-full z-20">
+              {activeImageIndex + 1} / {galleryImages.length}
+            </div>
+
+            {/* Prev Arrow in Lightbox */}
+            {galleryImages.length > 1 && (
+              <button
+                onClick={prevImage}
+                className="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/25 text-white flex items-center justify-center transition-all z-20"
+                title="Anterior"
+              >
+                <ChevronLeft size={28} />
+              </button>
+            )}
+
+            {/* Main Lightbox Image */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="relative max-w-4xl max-h-[85vh] flex items-center justify-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <img 
+                src={currentImage}
+                alt={product.name}
+                className="max-w-full max-h-[82vh] object-contain rounded-2xl shadow-2xl"
+              />
+            </motion.div>
+
+            {/* Next Arrow in Lightbox */}
+            {galleryImages.length > 1 && (
+              <button
+                onClick={nextImage}
+                className="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/25 text-white flex items-center justify-center transition-all z-20"
+                title="Siguiente"
+              >
+                <ChevronRight size={28} />
+              </button>
+            )}
+
+            {/* Bottom thumbnail strip in Lightbox */}
+            {galleryImages.length > 1 && (
+              <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 flex gap-2 overflow-x-auto max-w-[90vw] p-2 bg-black/40 rounded-2xl z-20">
+                {galleryImages.map((img, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setActiveImageIndex(idx)}
+                    className={`w-12 h-14 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 ${
+                      idx === activeImageIndex ? 'border-white scale-105' : 'border-transparent opacity-50 hover:opacity-80'
+                    }`}
+                  >
+                    <img src={img} alt="" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

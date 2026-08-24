@@ -22,6 +22,7 @@ export interface StoreConfig {
   primary_color: string
   secondary_color: string
   footer_text: string
+  hero_size?: 'half' | 'full' | 'compact' | 'hidden'
   logo_url?: string
   hero_title: string
   hero_subtitle: string

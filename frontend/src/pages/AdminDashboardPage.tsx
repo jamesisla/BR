@@ -27,7 +27,10 @@ import {
   Sparkles,
   BarChart3,
   Activity,
-  Shield
+  Shield,
+  Star,
+  Images as ImagesIcon,
+  Upload
 } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCart, formatCLP, formatImageUrl } from '../context/CartContext'
@@ -136,6 +139,7 @@ export default function AdminDashboardPage() {
     primary_color: '#2d1b0e',
     secondary_color: '#9c6644',
     footer_text: '© 2026 Tienda Demo. Venta directa por WhatsApp.',
+    hero_size: 'half',
     hero_title: 'Emprende con Estilo',
     hero_subtitle: 'Catálogo digital para PYMEs. Haz tu pedido directo por WhatsApp con transferencia.',
     hero_image_url: '',
@@ -148,18 +152,30 @@ export default function AdminDashboardPage() {
     announcement_active: true,
     currency: 'CLP',
     analytics_enabled: true,
-    ignore_admin_visits: true
+    ignore_admin_visits: false
   })
 
-  const [productForm, setProductForm] = useState({
+  const [productForm, setProductForm] = useState<{
+    name: string
+    slug: string
+    description: string
+    category: string
+    base_price: number
+    stock: number
+    image_url: string
+    images: string[]
+  }>({
     name: '',
     slug: '',
     description: '',
     category: 'general',
     base_price: 19990,
     stock: 10,
-    image_url: ''
+    image_url: '',
+    images: []
   })
+
+  const [newImageUrlInput, setNewImageUrlInput] = useState('')
 
   const [stats, setStats] = useState({
     totalSales: 0,
@@ -195,6 +211,7 @@ export default function AdminDashboardPage() {
           primary_color: data.primary_color || '#2d1b0e',
           secondary_color: data.secondary_color || '#9c6644',
           footer_text: data.footer_text || '© 2026 Tienda Demo. Venta directa por WhatsApp.',
+          hero_size: data.hero_size || 'half',
           hero_title: data.hero_title || 'Emprende con Estilo',
           hero_subtitle: data.hero_subtitle || 'Catálogo digital para PYMEs. Haz tu pedido directo por WhatsApp con transferencia.',
           hero_image_url: data.hero_image_url || '',
@@ -207,7 +224,7 @@ export default function AdminDashboardPage() {
           announcement_active: data.announcement_active !== false,
           currency: data.currency || 'CLP',
           analytics_enabled: data.analytics_enabled !== false,
-          ignore_admin_visits: data.ignore_admin_visits !== false
+          ignore_admin_visits: data.ignore_admin_visits === true
         })
         setLogoPreview(data.logo_url || '')
         setHeroPreview(data.hero_image_url || '')
@@ -304,6 +321,10 @@ export default function AdminDashboardPage() {
   const openProductModal = (product: any = null) => {
     if (product) {
       setEditingProduct(product)
+      const rawImgs = Array.isArray(product.images) && product.images.length > 0
+        ? product.images
+        : (product.image_url ? [product.image_url] : [])
+
       setProductForm({
         name: product.name,
         slug: product.slug,
@@ -311,9 +332,10 @@ export default function AdminDashboardPage() {
         category: product.category || 'general',
         base_price: Math.round(Number(product.base_price || 0)),
         stock: product.stock || 0,
-        image_url: product.image_url || ''
+        image_url: product.image_url || (rawImgs[0] || ''),
+        images: rawImgs
       })
-      setProductImagePreview(product.image_url || '')
+      setProductImagePreview(rawImgs[0] || '')
     } else {
       setEditingProduct(null)
       setProductForm({
@@ -323,10 +345,12 @@ export default function AdminDashboardPage() {
         category: categories.length > 0 ? categories[0].slug : 'general',
         base_price: 19990,
         stock: 10,
-        image_url: ''
+        image_url: '',
+        images: []
       })
       setProductImagePreview('')
     }
+    setNewImageUrlInput('')
     setIsModalOpen(true)
   }
 
@@ -433,15 +457,12 @@ export default function AdminDashboardPage() {
     e.preventDefault()
 
     if (uploading) {
-      alert('Por favor espera un momento a que la foto termine de subirse.')
+      alert('Por favor espera un momento a que las fotos terminen de subirse.')
       return
     }
 
-    let finalImageUrl = productForm.image_url
-    if (finalImageUrl && finalImageUrl.startsWith('blob:')) {
-      alert('La foto aún se está procesando. Espera unos segundos y vuelve a pulsar Guardar.')
-      return
-    }
+    const currentImages = productForm.images || []
+    let finalImageUrl = productForm.image_url || (currentImages[0] || '')
 
     const method = editingProduct ? 'PUT' : 'POST'
     const url = editingProduct 
@@ -455,6 +476,7 @@ export default function AdminDashboardPage() {
         body: JSON.stringify({
           ...productForm,
           image_url: finalImageUrl,
+          images: currentImages,
           base_price: Math.round(Number(productForm.base_price))
         })
       })
@@ -473,34 +495,48 @@ export default function AdminDashboardPage() {
   }
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const files = e.target.files
+    if (!files || files.length === 0) return
 
     setUploading(true)
     try {
-      // 1. Comprimir y optimizar a resolución Retina 1600px en el navegador
-      const compressed = await compressImage(file, 1600, 1600, 0.88)
+      const uploadedUrls: string[] = []
 
-      // 2. Mostrar vista previa local
-      const preview = URL.createObjectURL(compressed)
-      setProductImagePreview(preview)
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        // 1. Comprimir y optimizar a resolución Retina 1600px en el navegador
+        const compressed = await compressImage(file, 1600, 1600, 0.88)
 
-      // 3. Subir archivo
-      const formData = new FormData()
-      formData.append('file', compressed)
+        // 2. Subir archivo al backend
+        const formData = new FormData()
+        formData.append('file', compressed)
 
-      const response = await fetch('/api/products/upload', {
-        method: 'POST',
-        body: formData
-      })
+        const response = await fetch('/api/products/upload', {
+          method: 'POST',
+          body: formData
+        })
 
-      if (response.ok) {
-        const data = await response.json()
-        setProductForm(prev => ({ ...prev, image_url: data.url }))
-        setProductImagePreview(data.url)
-      } else {
-        const errData = await response.json().catch(() => ({}))
-        alert('Error al subir imagen al servidor: ' + (errData.detail || response.statusText))
+        if (response.ok) {
+          const data = await response.json()
+          if (data.url) {
+            uploadedUrls.push(data.url)
+          }
+        } else {
+          const errData = await response.json().catch(() => ({}))
+          console.error('Error al subir una de las imágenes:', errData)
+        }
+      }
+
+      if (uploadedUrls.length > 0) {
+        setProductForm(prev => {
+          const nextImages = [...(prev.images || []), ...uploadedUrls]
+          return {
+            ...prev,
+            images: nextImages,
+            image_url: nextImages[0] || prev.image_url
+          }
+        })
+        setProductImagePreview(prev => prev || uploadedUrls[0])
       }
     } catch (error: any) {
       console.error(error)
@@ -509,6 +545,46 @@ export default function AdminDashboardPage() {
       setUploading(false)
       e.target.value = ''
     }
+  }
+
+  const handleRemoveImage = (indexToRemove: number) => {
+    setProductForm(prev => {
+      const nextImages = prev.images.filter((_, idx) => idx !== indexToRemove)
+      const nextCover = nextImages[0] || ''
+      return {
+        ...prev,
+        images: nextImages,
+        image_url: nextCover
+      }
+    })
+  }
+
+  const handleSetPrimaryImage = (indexToPrimary: number) => {
+    setProductForm(prev => {
+      const target = prev.images[indexToPrimary]
+      const remaining = prev.images.filter((_, idx) => idx !== indexToPrimary)
+      const nextImages = [target, ...remaining]
+      return {
+        ...prev,
+        images: nextImages,
+        image_url: target
+      }
+    })
+    setProductImagePreview(productForm.images[indexToPrimary])
+  }
+
+  const handleAddImageUrl = () => {
+    const trimmed = newImageUrlInput.trim()
+    if (!trimmed) return
+    setProductForm(prev => {
+      const nextImages = [...(prev.images || []), trimmed]
+      return {
+        ...prev,
+        images: nextImages,
+        image_url: nextImages[0] || ''
+      }
+    })
+    setNewImageUrlInput('')
   }
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1042,14 +1118,74 @@ export default function AdminDashboardPage() {
                              <div>
                                 <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-1">Subtítulo de Portada</label>
                                 <input 
-                                  type="text" 
-                                  value={storeSettings.hero_subtitle}
-                                  onChange={(e) => setStoreSettings({...storeSettings, hero_subtitle: e.target.value})}
-                                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
-                                />
+                                   type="text" 
+                                   value={storeSettings.hero_subtitle}
+                                   onChange={(e) => setStoreSettings({...storeSettings, hero_subtitle: e.target.value})}
+                                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                                 />
+                              </div>
+                           </div>
+
+                           {/* Tamaño y Altura del Banner Portada */}
+                           <div className="mt-3 pt-3 border-t border-slate-100">
+                             <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-1.5">
+                               Tamaño y Altura del Banner Portada (Hero)
+                             </label>
+                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                               <button
+                                 type="button"
+                                 onClick={() => setStoreSettings({...storeSettings, hero_size: 'half'})}
+                                 className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                                   (storeSettings.hero_size || 'half') === 'half'
+                                     ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
+                                     : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                                 }`}
+                               >
+                                 <span className="text-xs font-bold block">📱 Mitad Pantalla</span>
+                                 <span className="text-[9px] opacity-80 block leading-tight mt-0.5">Recomendado. Muestra productos arriba.</span>
+                               </button>
+
+                               <button
+                                 type="button"
+                                 onClick={() => setStoreSettings({...storeSettings, hero_size: 'full'})}
+                                 className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                                   storeSettings.hero_size === 'full'
+                                     ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
+                                     : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                                 }`}
+                               >
+                                 <span className="text-xs font-bold block">🖼️ Completa</span>
+                                 <span className="text-[9px] opacity-80 block leading-tight mt-0.5">Banner grande e inmersivo (80% pantalla).</span>
+                               </button>
+
+                               <button
+                                 type="button"
+                                 onClick={() => setStoreSettings({...storeSettings, hero_size: 'compact'})}
+                                 className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                                   storeSettings.hero_size === 'compact'
+                                     ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
+                                     : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                                 }`}
+                               >
+                                 <span className="text-xs font-bold block">⚡ Compacto</span>
+                                 <span className="text-[9px] opacity-80 block leading-tight mt-0.5">Barra delgada tipo encabezado (30% pantalla).</span>
+                               </button>
+
+                               <button
+                                 type="button"
+                                 onClick={() => setStoreSettings({...storeSettings, hero_size: 'hidden'})}
+                                 className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                                   storeSettings.hero_size === 'hidden'
+                                     ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
+                                     : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                                 }`}
+                               >
+                                 <span className="text-xs font-bold block">🚫 Ocultar</span>
+                                 <span className="text-[9px] opacity-80 block leading-tight mt-0.5">Sin portada. Va directo al catálogo.</span>
+                               </button>
                              </div>
-                          </div>
-                       </div>
+                           </div>
+                        </div>
 
                        {/* Footer Copyright Text */}
                        <div className="pt-4 border-t border-slate-100">
@@ -1311,49 +1447,109 @@ export default function AdminDashboardPage() {
               </div>
 
               <form onSubmit={handleProductSubmit} className="space-y-4">
-                 {/* Photo Upload with Camera Trigger */}
+                 {/* Multi-Photo Manager with Camera Trigger */}
                  <div>
-                    <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-1.5">Foto del Producto (Optimizada Retina/HD)</label>
-                    <div className="flex gap-3 items-center">
-                       <label className="cursor-pointer w-20 h-24 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl flex items-center justify-center overflow-hidden flex-shrink-0 relative hover:border-slate-400 transition-all">
-                          {(productImagePreview || productForm.image_url) ? (
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400">
+                        Fotos del Producto ({productForm.images?.length || 0})
+                      </label>
+                      <span className="text-[10px] text-amber-600 font-bold flex items-center gap-1">
+                        <Star size={11} className="fill-current text-amber-500" /> La primera foto es la portada
+                      </span>
+                    </div>
+
+                    {/* Thumbnails grid */}
+                    {productForm.images && productForm.images.length > 0 && (
+                      <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 mb-3">
+                        {productForm.images.map((imgUrl, idx) => (
+                          <div 
+                            key={idx} 
+                            className={`relative aspect-square rounded-xl overflow-hidden border-2 group bg-slate-50 ${
+                              idx === 0 ? 'border-amber-400 ring-2 ring-amber-400/20' : 'border-slate-200'
+                            }`}
+                          >
                             <img 
-                              src={formatImageUrl(productImagePreview || productForm.image_url)} 
-                              className="w-full h-full object-cover" 
-                              alt="Preview"
+                              src={formatImageUrl(imgUrl)} 
+                              alt={`Foto ${idx + 1}`}
+                              className="w-full h-full object-cover"
                               onError={(e: any) => {
                                 e.target.src = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=200&auto=format&fit=crop"
                               }}
                             />
-                          ) : (
-                            <Camera className="text-slate-300" size={28} />
-                          )}
-                          {uploading && (
-                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                               <Loader2 className="animate-spin text-white" size={20} />
-                            </div>
-                          )}
-                          <input type="file" onChange={handleImageUpload} className="sr-only" accept="image/*" disabled={uploading} />
-                       </label>
 
-                       <div className="flex-1 space-y-2">
-                          <label className="cursor-pointer w-full py-2.5 px-3 bg-slate-900 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-slate-800 shadow-md">
-                            <input type="file" onChange={handleImageUpload} className="sr-only" accept="image/*" disabled={uploading} />
-                            {uploading ? <Loader2 size={16} className="animate-spin" /> : <Camera size={16} />}
-                            <span>{uploading ? 'Procesando y subiendo...' : 'Tomar Foto / Elegir Galería'}</span>
-                          </label>
-                          
+                            {/* Badge principal */}
+                            {idx === 0 && (
+                              <span className="absolute top-1 left-1 bg-amber-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 shadow-sm">
+                                <Star size={8} className="fill-current" /> Principal
+                              </span>
+                            )}
+
+                            {/* Action Overlay */}
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 p-1">
+                              {idx !== 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSetPrimaryImage(idx)}
+                                  className="w-full py-1 bg-amber-500 hover:bg-amber-600 text-white rounded text-[8px] font-bold flex items-center justify-center gap-0.5"
+                                  title="Marcar como foto principal de portada"
+                                >
+                                  <Star size={9} /> Portada
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveImage(idx)}
+                                className="w-full py-1 bg-rose-600 hover:bg-rose-700 text-white rounded text-[8px] font-bold flex items-center justify-center gap-0.5"
+                                title="Eliminar foto"
+                              >
+                                <Trash2 size={9} /> Quitar
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Upload Controls & URL input */}
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <label className="cursor-pointer flex-1 py-2.5 px-3 bg-slate-900 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-slate-800 shadow-md transition-all">
                           <input 
-                             type="text" 
-                             value={productForm.image_url}
-                             onChange={(e) => {
-                               setProductForm({...productForm, image_url: e.target.value})
-                               setProductImagePreview(e.target.value)
-                             }}
-                             placeholder="O pegar URL de imagen..."
-                             className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-mono"
+                            type="file" 
+                            multiple 
+                            onChange={handleImageUpload} 
+                            className="sr-only" 
+                            accept="image/*" 
+                            disabled={uploading} 
                           />
-                       </div>
+                          {uploading ? <Loader2 size={16} className="animate-spin" /> : <Camera size={16} />}
+                          <span>{uploading ? 'Procesando y subiendo...' : 'Subir Fotos (Múltiples / Galería / Cámara)'}</span>
+                        </label>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <input 
+                          type="text" 
+                          value={newImageUrlInput}
+                          onChange={(e) => setNewImageUrlInput(e.target.value)}
+                          placeholder="O pegar URL de imagen directa..."
+                          className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-mono"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              handleAddImageUrl()
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddImageUrl}
+                          disabled={!newImageUrlInput.trim()}
+                          className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold disabled:opacity-40 transition-colors"
+                        >
+                          + Añadir
+                        </button>
+                      </div>
                     </div>
                  </div>
 

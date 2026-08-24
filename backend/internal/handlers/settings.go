@@ -81,6 +81,9 @@ func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
 		settings.SecondaryColor = input.SecondaryColor
 		settings.LogoURL = input.LogoURL
 		settings.FooterText = input.FooterText
+		if input.HeroSize != "" {
+			settings.HeroSize = input.HeroSize
+		}
 		settings.HeroTitle = input.HeroTitle
 		settings.HeroSubtitle = input.HeroSubtitle
 		settings.HeroImageURL = input.HeroImageURL

@@ -1,7 +1,10 @@
 package models
 
 import (
+	"encoding/json"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // Category represents a product category with name, slug, icon and order
@@ -35,21 +38,34 @@ type Product struct {
 	BasePrice   float64   `gorm:"type:decimal(12,0);not null" json:"base_price"`
 	Stock       int       `gorm:"type:integer;default:10" json:"stock"`
 	ImageURL    string    `gorm:"type:varchar(500)" json:"image_url"`
+	Images      string    `gorm:"type:text;default:'[]'" json:"images_raw,omitempty"`
+	ImagesList  []string  `gorm:"-" json:"images"`
 	IsActive    bool      `gorm:"type:boolean;default:true" json:"is_active"`
 	CreatedAt   time.Time `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt   time.Time `gorm:"autoUpdateTime" json:"updated_at"`
 }
 
+func (p *Product) AfterFind(tx *gorm.DB) (err error) {
+	if p.Images != "" && p.Images != "[]" {
+		_ = json.Unmarshal([]byte(p.Images), &p.ImagesList)
+	}
+	if len(p.ImagesList) == 0 && p.ImageURL != "" {
+		p.ImagesList = []string{p.ImageURL}
+	}
+	return nil
+}
+
 // ProductCreate represents the payload to create or update a product
 type ProductCreate struct {
-	Name        string  `json:"name" binding:"required"`
-	Slug        string  `json:"slug" binding:"required"`
-	Description string  `json:"description"`
-	Category    string  `json:"category"`
-	BasePrice   float64 `json:"base_price" binding:"required"`
-	Stock       int     `json:"stock"`
-	ImageURL    string  `json:"image_url"`
-	IsActive    *bool   `json:"is_active"`
+	Name        string   `json:"name" binding:"required"`
+	Slug        string   `json:"slug" binding:"required"`
+	Description string   `json:"description"`
+	Category    string   `json:"category"`
+	BasePrice   float64  `json:"base_price" binding:"required"`
+	Stock       int      `json:"stock"`
+	ImageURL    string   `json:"image_url"`
+	Images      []string `json:"images"`
+	IsActive    *bool    `json:"is_active"`
 }
 
 // Order represents a customer purchase
@@ -100,6 +116,7 @@ type StoreSettings struct {
 	PrimaryColor       string `gorm:"type:varchar(50);default:'#2d1b0e'" json:"primary_color"`
 	SecondaryColor     string `gorm:"type:varchar(50);default:'#9c6644'" json:"secondary_color"`
 	FooterText         string `gorm:"type:text;default:'© 2026 Tienda PYME. Ventas directas por WhatsApp.'" json:"footer_text"`
+	HeroSize           string `gorm:"type:varchar(20);default:'half'" json:"hero_size"`
 	HeroTitle          string `gorm:"type:varchar(255);default:'Emprende con Estilo'" json:"hero_title"`
 	HeroSubtitle       string `gorm:"type:varchar(500);default:'Descubre nuestra selección exclusiva. Haz tus pedidos de forma rápida por WhatsApp.'" json:"hero_subtitle"`
 	HeroImageURL       string `gorm:"type:varchar(500);default:''" json:"hero_image_url"`

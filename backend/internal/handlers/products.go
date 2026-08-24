@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -101,6 +102,23 @@ func (h *ProductHandler) CreateProduct(c *gin.Context) {
 		category = input.Category
 	}
 
+	var imagesJSON string
+	imagesList := input.Images
+	if len(input.Images) > 0 {
+		bytes, _ := json.Marshal(input.Images)
+		imagesJSON = string(bytes)
+		if input.ImageURL == "" {
+			input.ImageURL = input.Images[0]
+		}
+	} else if input.ImageURL != "" {
+		bytes, _ := json.Marshal([]string{input.ImageURL})
+		imagesJSON = string(bytes)
+		imagesList = []string{input.ImageURL}
+	} else {
+		imagesJSON = "[]"
+		imagesList = []string{}
+	}
+
 	product := models.Product{
 		ID:          uuid.New().String(),
 		Name:        input.Name,
@@ -110,6 +128,8 @@ func (h *ProductHandler) CreateProduct(c *gin.Context) {
 		BasePrice:   input.BasePrice,
 		Stock:       input.Stock,
 		ImageURL:    input.ImageURL,
+		Images:      imagesJSON,
+		ImagesList:  imagesList,
 		IsActive:    isActive,
 	}
 
@@ -139,6 +159,23 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 		return
 	}
 
+	var imagesJSON string
+	imagesList := input.Images
+	if len(input.Images) > 0 {
+		bytes, _ := json.Marshal(input.Images)
+		imagesJSON = string(bytes)
+		if input.ImageURL == "" {
+			input.ImageURL = input.Images[0]
+		}
+	} else if input.ImageURL != "" {
+		bytes, _ := json.Marshal([]string{input.ImageURL})
+		imagesJSON = string(bytes)
+		imagesList = []string{input.ImageURL}
+	} else {
+		imagesJSON = "[]"
+		imagesList = []string{}
+	}
+
 	product.Name = input.Name
 	product.Slug = input.Slug
 	product.Description = input.Description
@@ -148,6 +185,8 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	product.BasePrice = input.BasePrice
 	product.Stock = input.Stock
 	product.ImageURL = input.ImageURL
+	product.Images = imagesJSON
+	product.ImagesList = imagesList
 	if input.IsActive != nil {
 		product.IsActive = *input.IsActive
 	}
