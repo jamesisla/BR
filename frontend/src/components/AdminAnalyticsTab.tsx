@@ -97,10 +97,10 @@ export default function AdminAnalyticsTab({ onSettingsUpdated }: AdminAnalyticsT
   }
 
   // Fetch Summary and Visits
-  const fetchSummary = async (selectedPeriod = period) => {
+  const fetchSummary = async (selectedPeriod = period, incAdmin = includeAdminVisits) => {
     try {
       setLoadingSummary(true)
-      const res = await fetch(`/api/analytics/summary?period=${selectedPeriod}`)
+      const res = await fetch(`/api/analytics/summary?period=${selectedPeriod}&include_admin=${incAdmin ? 'true' : 'false'}`)
       if (res.ok) {
         const data = await res.json()
         setSummary(data)
@@ -140,12 +140,12 @@ export default function AdminAnalyticsTab({ onSettingsUpdated }: AdminAnalyticsT
 
   const handleRefreshAll = async () => {
     setIsRefreshing(true)
-    await Promise.all([fetchSummary(period), fetchVisits(currentPage, searchQuery, deviceFilter, period, includeAdminVisits)])
+    await Promise.all([fetchSummary(period, includeAdminVisits), fetchVisits(currentPage, searchQuery, deviceFilter, period, includeAdminVisits)])
     setIsRefreshing(false)
   }
 
   useEffect(() => {
-    fetchSummary(period)
+    fetchSummary(period, includeAdminVisits)
     fetchVisits(1, searchQuery, deviceFilter, period, includeAdminVisits)
   }, [period, deviceFilter, includeAdminVisits])
 

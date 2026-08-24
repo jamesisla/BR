@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -208,6 +209,7 @@ func (h *AnalyticsHandler) getFilteredQuery(period string, includeAdmin bool) *g
 // GetSummary calculates metric summaries, trends and breakdowns
 func (h *AnalyticsHandler) GetSummary(c *gin.Context) {
 	period := c.DefaultQuery("period", "7d") // today, 7d, 30d, all
+	includeAdminParam := c.Query("include_admin")
 
 	// Get Store Settings for Analytics status
 	var settings models.StoreSettings
@@ -216,6 +218,12 @@ func (h *AnalyticsHandler) GetSummary(c *gin.Context) {
 	if err := h.db.First(&settings).Error; err == nil {
 		analyticsEnabled = settings.AnalyticsEnabled
 		ignoreAdmin = settings.IgnoreAdminVisits
+	}
+
+	if includeAdminParam == "true" {
+		ignoreAdmin = false
+	} else if includeAdminParam == "false" {
+		ignoreAdmin = true
 	}
 
 	summary := models.AnalyticsSummary{
@@ -376,7 +384,7 @@ func (h *AnalyticsHandler) GetSummary(c *gin.Context) {
 	var prodViewStats []ProdViewStat
 	h.getFilteredQuery(period, !ignoreAdmin).
 		Select("path, count(*) as views, count(distinct visitor_id) as unique_visitors, max(created_at) as last_viewed").
-		Where("path LIKE '/product/%'").
+		Where("LOWER(path) LIKE '%/product/%'").
 		Group("path").
 		Scan(&prodViewStats)
 
@@ -384,17 +392,24 @@ func (h *AnalyticsHandler) GetSummary(c *gin.Context) {
 	statsBySlug := make(map[string]ProdViewStat)
 	var totalProductViews int64
 	for _, row := range prodViewStats {
-		slug := strings.TrimPrefix(row.Path, "/product/")
-		slug = strings.Split(slug, "?")[0]
-		slug = strings.Trim(slug, "/")
-		if slug != "" {
-			existing := statsBySlug[slug]
+		loweredPath := strings.ToLower(row.Path)
+		idx := strings.Index(loweredPath, "/product/")
+		if idx == -1 {
+			continue
+		}
+		rawSlug := row.Path[idx+len("/product/"):]
+		rawSlug = strings.Split(rawSlug, "?")[0]
+		rawSlug = strings.Split(rawSlug, "#")[0]
+		rawSlug = strings.Trim(rawSlug, "/")
+		if rawSlug != "" {
+			slugKey := strings.ToLower(rawSlug)
+			existing := statsBySlug[slugKey]
 			existing.Views += row.Views
 			existing.UniqueVisitors += row.UniqueVisitors
 			if existing.LastViewed == nil || (row.LastViewed != nil && row.LastViewed.After(*existing.LastViewed)) {
 				existing.LastViewed = row.LastViewed
 			}
-			statsBySlug[slug] = existing
+			statsBySlug[slugKey] = existing
 			totalProductViews += row.Views
 		}
 	}
@@ -405,14 +420,17 @@ func (h *AnalyticsHandler) GetSummary(c *gin.Context) {
 	var productMetrics []models.ProductMetricItem
 
 	for _, prod := range allProducts {
-		stat, hasStat := statsBySlug[prod.Slug]
+		slugKey := strings.ToLower(prod.Slug)
+		idKey := strings.ToLower(prod.ID)
+
+		stat, hasStat := statsBySlug[slugKey]
 		if !hasStat {
-			stat = statsBySlug[prod.ID]
-			if stat.Views > 0 {
-				matchedSlugs[prod.ID] = true
+			stat, hasStat = statsBySlug[idKey]
+			if hasStat && stat.Views > 0 {
+				matchedSlugs[idKey] = true
 			}
 		} else {
-			matchedSlugs[prod.Slug] = true
+			matchedSlugs[slugKey] = true
 		}
 
 		pct := float64(0)
@@ -423,6 +441,11 @@ func (h *AnalyticsHandler) GetSummary(c *gin.Context) {
 		img := prod.ImageURL
 		if len(prod.ImagesList) > 0 {
 			img = prod.ImagesList[0]
+		} else if prod.Images != "" {
+			var imgList []string
+			if err := json.Unmarshal([]byte(prod.Images), &imgList); err == nil && len(imgList) > 0 {
+				img = imgList[0]
+			}
 		}
 
 		productMetrics = append(productMetrics, models.ProductMetricItem{
